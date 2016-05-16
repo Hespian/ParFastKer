@@ -106,7 +106,8 @@ public:
 
     // reduction methods
 	bool fold2Reduction();
-
+	bool isolatedCliqueReduction();
+	bool isolatedCliqueReduction(NodeID v, int partition);
 
     // recursive methods
 	bool reduce();

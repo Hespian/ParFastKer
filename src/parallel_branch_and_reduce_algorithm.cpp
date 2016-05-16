@@ -220,6 +220,59 @@ loop:       ;
     return false;
 }
 
+bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction() {
+    std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
+
+    #pragma omp parallel for
+    for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
+        for(int v : partition_nodes[partition]) {
+            if(x[v] < 0) {
+                bool changed_node = isolatedCliqueReduction(v, partition);
+                if(changed_node) {
+                    changed_per_partition[partition] = 1;
+                }
+            }
+        }
+    }
+
+
+    for(char changed : changed_per_partition) {
+        if(changed != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction(NodeID vertex, int partition) {
+    for (int neighbor : adj[vertex]) {
+        if (x[neighbor] < 0 &&  (partitions[neighbor] != partition || deg(neighbor) < deg(vertex))) {
+            return false;
+        }
+    }
+    fast_set &used_partition = used[partition];
+    for (int neighbor : adj[vertex]) {
+        if(x[neighbor] < 0) {
+            used_partition.clear();
+
+            for (int nNeighbor : adj[neighbor]) {
+                if(x[nNeighbor] < 0) {
+                    used_partition.add(nNeighbor);
+                }
+            }
+            used_partition.add(neighbor);
+
+            for (int neighbor2 : adj[vertex]) {
+                if(x[neighbor2] < 0 && !used_partition.get(neighbor2)) {
+                    return false;
+                }
+            }
+        }
+    }
+    set(vertex, 0);
+    return true;
+}
+
 std::string parallel_branch_and_reduce_algorithm::debugString() const {
     stringstream ins;
 #ifdef PUT_TIME
@@ -289,7 +342,7 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
     }
-
+    clock_t begin = clock();
     for (;;) {
         // if (REDUCTION >= 0) deg1Reduction();
 ////        if (n > 100 && n * SHRINK >= rn && !outputLP && decompose()) return true;
@@ -302,11 +355,15 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
             if (r > 0) continue;
         }*/
         if (REDUCTION >= 1 && fold2Reduction()) continue;
+        if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
         // if (REDUCTION >= 2 && twinReduction()) continue;
         // if (REDUCTION >= 2 && funnelReduction()) continue;
         // if (REDUCTION >= 2 && deskReduction()) continue;
         break;
     }
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    cout << "Parallel took " << elapsed_secs << " seconds" << endl;
     size_t low_degree_count(0);
     for (int v = 0; v < n; v++) if (x[v] < 0) {
         if (deg(v) <= 1) {

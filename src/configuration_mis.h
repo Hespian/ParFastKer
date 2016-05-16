@@ -105,7 +105,7 @@ inline void configuration_mis::standard( MISConfig & mis_config ) {
     mis_config.pool_renewal_factor                    = 10.0;
     // Separator pool
     mis_config.number_of_separators                   = 10;
-    mis_config.number_of_partitions                   = 10;
+    mis_config.number_of_partitions                   = 4;
     mis_config.number_of_k_separators                 = 10;
     mis_config.number_of_k_partitions                 = 10;
     // Output

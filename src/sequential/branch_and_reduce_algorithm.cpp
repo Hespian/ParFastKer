@@ -646,6 +646,46 @@ loop:   ;
     ////    }
 }
 
+bool branch_and_reduce_algorithm::isolatedCliqueReduction() {
+    bool changed = false;
+    for(int v = 0; v < n; ++v) {
+        if(x[v] < 0) {
+            bool changed_node = isolatedCliqueReduction(v);
+            changed = changed | changed_node;
+        }
+    }
+    return changed;
+}
+
+bool branch_and_reduce_algorithm::isolatedCliqueReduction(NodeID vertex) {
+    for (int neighbor : adj[vertex]) {
+        if (x[neighbor] < 0 && deg(neighbor) < deg(vertex)) {
+            return false;
+        }
+    }
+
+    for (int neighbor : adj[vertex]) {
+        if(x[neighbor] < 0) {
+            used.clear();
+
+            for (int nNeighbor : adj[neighbor]) {
+                if(x[nNeighbor] < 0) {
+                    used.add(nNeighbor);
+                }
+            }
+            used.add(neighbor);
+
+            for (int neighbor2 : adj[vertex]) {
+                if(x[neighbor2] < 0 && !used.get(neighbor2)) {
+                    return false;
+                }
+            }
+        }
+    }
+    set(vertex, 0);
+    return true;
+}
+
 bool branch_and_reduce_algorithm::twinReduction() {
     ////    try (Stat stat = new Stat("reduce_twin")) {
     int oldn = rn;
@@ -1600,6 +1640,7 @@ void branch_and_reduce_algorithm::PrintState() const
 void branch_and_reduce_algorithm::reduce_graph()
 {
     int oldn = rn;
+    clock_t begin = clock();
     for (;;) {
         // if (REDUCTION >= 0) deg1Reduction();
 ////        if (n > 100 && n * SHRINK >= rn && !outputLP && decompose()) return true;
@@ -1612,11 +1653,15 @@ void branch_and_reduce_algorithm::reduce_graph()
             if (r > 0) continue;
         }*/
         if (REDUCTION >= 1 && fold2Reduction()) continue;
+        if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
         // if (REDUCTION >= 2 && twinReduction()) continue;
         // if (REDUCTION >= 2 && funnelReduction()) continue;
         // if (REDUCTION >= 2 && deskReduction()) continue;
         break;
     }
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    cout << "Sequential took " << elapsed_secs << " seconds" << endl;
 ////    opt = crt;
     if (debug >= 2 && depth <= maxDepth && oldn != rn) fprintf(stderr, "%sreduce: %d -> %d\n", debugString().c_str(), oldn, rn);
     size_t low_degree_count(0);

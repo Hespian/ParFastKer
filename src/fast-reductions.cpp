@@ -61,7 +61,6 @@ int main(int argn, char **argv) {
     size_t is_base = full_reducer_sequential->get_current_is_size_with_folds();
     mis_log::instance()->print_reduction(mis_config, is_base, full_reducer_sequential->number_of_nodes_remaining());    
 
-
     // initialize full reducer
     std::vector<std::vector<int>> adj_for_parallel_aglorithm(G.number_of_nodes());
 
@@ -74,7 +73,6 @@ int main(int argn, char **argv) {
         } endfor
     } endfor
 
-    mis_config.kahip_mode = 3;
     std::unique_ptr<parallel_branch_and_reduce_algorithm> full_reducer_parallel = std::unique_ptr<parallel_branch_and_reduce_algorithm>(new parallel_branch_and_reduce_algorithm(adj_for_parallel_aglorithm, adj_for_parallel_aglorithm.size(), mis_config));
 
     full_reducer_parallel->reduce_graph();

@@ -129,6 +129,8 @@ public:
 	bool deskReduction();
 	bool unconfinedReduction();
 	int  packingReduction();
+	bool isolatedCliqueReduction();
+	bool isolatedCliqueReduction(NodeID v);
 
     // lower bounds for pruning
 	int lpLowerBound();
