@@ -15,6 +15,7 @@ include_directories(extern/KaHIP/interface)
 add_definitions(-std=c++11)
  
 add_definitions(${OpenMP_CXX_FLAGS})
+add_definitions(${CMAKE_CXX_FLAGS_RELEASE})
 
 # Add the executable
 add_executable(fast-reductions ${SOURCES})
