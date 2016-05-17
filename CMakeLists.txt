@@ -13,7 +13,8 @@ include_directories(extern/KaHIP/interface)
 
 #enable c++11
 add_definitions(-std=c++11)
- 
+
+set(OpenMP_CXX_FLAGS "${OpenMP_CXX_FLAGS} -fopenmp")
 add_definitions(${OpenMP_CXX_FLAGS})
 add_definitions(${CMAKE_CXX_FLAGS_RELEASE})
 
