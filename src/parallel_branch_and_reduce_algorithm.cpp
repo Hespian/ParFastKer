@@ -34,6 +34,7 @@
 #include <algorithm>  // sort()
 #include <deque>
 #include <chrono>
+#include <omp.h>
 
 #include "kaHIP_interface.h"
 ////#define debug(x) {fprintf(2, x);}
@@ -346,7 +347,7 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
     }
-    clock_t begin = clock();
+    auto begin = omp_get_wtime();
     for (;;) {
         // if (REDUCTION >= 0) deg1Reduction();
 ////        if (n > 100 && n * SHRINK >= rn && !outputLP && decompose()) return true;
@@ -365,8 +366,8 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
         // if (REDUCTION >= 2 && deskReduction()) continue;
         break;
     }
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    auto end = omp_get_wtime();
+    double elapsed_secs = double(end - begin);
     cout << "Parallel took " << elapsed_secs << " seconds" << endl;
     size_t low_degree_count(0);
     for (int v = 0; v < n; v++) if (x[v] < 0) {
