@@ -192,16 +192,16 @@ bool parallel_branch_and_reduce_algorithm::fold2Reduction() {
                 }
             }
             if (p < 2) continue;
-            for (int u : adj[tmp[0]]) if (u == tmp[1]) {
-                set(v, 0);
-                goto loop;
-            }
             for(int i = 0; i < 2; ++i) {
                 for(int u : adj[tmp[i]]) {
                     if(partitions[u] != partition) {
                         goto loop;
                     }
                 }
+            }
+            for (int u : adj[tmp[0]]) if (u == tmp[1]) {
+                set(v, 0);
+                goto loop;
             }
             {
             vector<int> copyOfTmp(tmp.begin(), tmp.begin() + 2);
@@ -245,8 +245,12 @@ bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction() {
 }
 
 bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction(NodeID vertex, int partition) {
+    auto degreeVertex = deg(vertex);
     for (int neighbor : adj[vertex]) {
-        if (x[neighbor] < 0 &&  (partitions[neighbor] != partition || deg(neighbor) < deg(vertex))) {
+        if (partitions[neighbor] != partition) {
+            return false;
+        }
+        if(x[neighbor] < 0 && deg(neighbor) < degreeVertex) {
             return false;
         }
     }
