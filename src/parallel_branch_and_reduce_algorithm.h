@@ -113,6 +113,8 @@ public:
     // recursive methods
 	bool reduce();
 
+	void undoReductions();
+
     // vestiges of original Java code
 #if 0
 	

@@ -354,11 +354,35 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
         partition_nodes[partitions[node]].push_back(node);
     }
     auto begin = omp_get_wtime();
-    for (;;) {
+    /*for (;;) {
         if (REDUCTION >= 1 && fold2Reduction()) continue;
         if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
         break;
+    }*/
+
+    std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
+    #pragma omp parallel for
+    for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
+        for (;;) {
+            changed_per_partition[partition] = 0;
+            for (int v : partition_nodes[partition]) if (x[v] < 0) {
+                bool changed_node = fold2Reduction(v, partition);
+                if(changed_node) {
+                    changed_per_partition[partition] = 1;
+                    continue;
+                }
+                changed_node = isolatedCliqueReduction(v, partition);
+                if(changed_node) {
+                    changed_per_partition[partition] = 1;
+                    continue;
+                }
+            }
+            if(changed_per_partition[partition] != 1) {
+                break;
+            }
+        }
     }
+
     auto end = omp_get_wtime();
     double elapsed_secs = double(end - begin);
     cout << "Parallel took " << elapsed_secs << " seconds" << endl;
@@ -401,6 +425,14 @@ size_t parallel_branch_and_reduce_algorithm::get_current_is_size_with_folds() co
     }
 
     return current_is_size + folded_vertex_count/2;
+}
+
+void parallel_branch_and_reduce_algorithm::undoReductions() {
+    for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
+        for (int i = modifiedN[partition] - 1; i >= 0; i--) {
+            modifieds[partition][i]->reverse(x);
+        }
+    }
 }
 
 bool parallel_branch_and_reduce_algorithm::folded_vertices_exist() const {

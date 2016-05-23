@@ -1642,26 +1642,26 @@ void branch_and_reduce_algorithm::reduce_graph()
     int oldn = rn;
     clock_t begin = clock();
     for (;;) {
-        // if (REDUCTION >= 0) deg1Reduction();
+        if (REDUCTION >= 0) deg1Reduction();
 ////        if (n > 100 && n * SHRINK >= rn && !outputLP && decompose()) return true;
-        // if (REDUCTION >= 0 && REDUCTION < 2 && dominateReduction()) continue;
-        // if (REDUCTION >= 2 && unconfinedReduction()) continue;
-        // if (REDUCTION >= 1 && lpReduction()) continue;
-        /*if (REDUCTION >= 3) {
+        if (REDUCTION >= 0 && REDUCTION < 2 && dominateReduction()) continue;
+        if (REDUCTION >= 2 && unconfinedReduction()) continue;
+        if (REDUCTION >= 1 && lpReduction()) continue;
+        if (REDUCTION >= 3) {
             int r = packingReduction();
             if (r < 0) return;
             if (r > 0) continue;
-        }*/
+        }
         if (REDUCTION >= 1 && fold2Reduction()) continue;
-        if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
-        // if (REDUCTION >= 2 && twinReduction()) continue;
-        // if (REDUCTION >= 2 && funnelReduction()) continue;
-        // if (REDUCTION >= 2 && deskReduction()) continue;
+        // if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
+        if (REDUCTION >= 2 && twinReduction()) continue;
+        if (REDUCTION >= 2 && funnelReduction()) continue;
+        if (REDUCTION >= 2 && deskReduction()) continue;
         break;
     }
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    cout << "Sequential took " << elapsed_secs << " seconds" << endl;
+    // cout << "Sequential took " << elapsed_secs << " seconds" << endl;
 ////    opt = crt;
     if (debug >= 2 && depth <= maxDepth && oldn != rn) fprintf(stderr, "%sreduce: %d -> %d\n", debugString().c_str(), oldn, rn);
     size_t low_degree_count(0);
@@ -1670,7 +1670,7 @@ void branch_and_reduce_algorithm::reduce_graph()
             low_degree_count++;
         }
     }
-    cout << "There are " << low_degree_count << " degree 0 and 1 vertices left!" << endl << flush;
+    // cout << "There are " << low_degree_count << " degree 0 and 1 vertices left!" << endl << flush;
 }
 
 void branch_and_reduce_algorithm::initial_reduce_graph()

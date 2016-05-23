@@ -40,26 +40,7 @@ int main(int argn, char **argv) {
     
     // Print setup information
     mis_log::instance()->print_graph();
-    mis_log::instance()->print_config();
-
-    // initialize full reducer
-    std::vector<std::vector<int>> adj_for_sequential_aglorithm(G.number_of_nodes());
-
-    // Build adjacency vectors
-    forall_nodes(G, node) {
-        adj_for_sequential_aglorithm[node].reserve(G.getNodeDegree(node));
-        forall_out_edges(G, edge, node) {
-            NodeID neighbor = G.getEdgeTarget(edge);
-            adj_for_sequential_aglorithm[node].push_back(neighbor);
-        } endfor
-    } endfor
-
-    std::unique_ptr<branch_and_reduce_algorithm> full_reducer_sequential = std::unique_ptr<branch_and_reduce_algorithm>(new branch_and_reduce_algorithm(adj_for_sequential_aglorithm, adj_for_sequential_aglorithm.size()));
-
-    full_reducer_sequential->reduce_graph();
-
-    size_t is_base = full_reducer_sequential->get_current_is_size_with_folds();
-    mis_log::instance()->print_reduction(mis_config, is_base, full_reducer_sequential->number_of_nodes_remaining());    
+    mis_log::instance()->print_config();  
 
     // initialize full reducer
     std::vector<std::vector<int>> adj_for_parallel_aglorithm(G.number_of_nodes());
@@ -77,41 +58,91 @@ int main(int argn, char **argv) {
 
     full_reducer_parallel->reduce_graph();
 
-    is_base = full_reducer_parallel->get_current_is_size_with_folds();
+    auto is_base = full_reducer_parallel->get_current_is_size_with_folds();
     mis_log::instance()->print_reduction(mis_config, is_base, full_reducer_parallel->number_of_nodes_remaining());
 
 
 
-   /* std::cout <<  "checking solution ..."  << std::endl;
+
+
     // initialize full reducer
-    std::vector<std::vector<int>> adj_for_parallel_aglorithm_test(G.number_of_nodes());
+    std::vector<std::vector<int>> adj_for_sequential_aglorithm(G.number_of_nodes());
 
     // Build adjacency vectors
     forall_nodes(G, node) {
-        adj_for_parallel_aglorithm_test[node].reserve(G.getNodeDegree(node));
-        forall_out_edges(G, edge, node) {
-            NodeID neighbor = G.getEdgeTarget(edge);
-            adj_for_parallel_aglorithm_test[node].push_back(neighbor);
-        } endfor
+    	if(full_reducer_parallel->x[node] < 0) {
+	        adj_for_sequential_aglorithm[node].reserve(G.getNodeDegree(node));
+	        forall_out_edges(G, edge, node) {
+	            NodeID neighbor = G.getEdgeTarget(edge);
+	            if(full_reducer_parallel->x[neighbor] < 0) {
+	            	adj_for_sequential_aglorithm[node].push_back(neighbor);
+	            }
+	        } endfor
+	    }
     } endfor
 
-    std::unique_ptr<parallel_branch_and_reduce_algorithm> full_reducer_parallel_for_test = std::unique_ptr<parallel_branch_and_reduce_algorithm>(new parallel_branch_and_reduce_algorithm(adj_for_parallel_aglorithm_test, adj_for_parallel_aglorithm_test.size(), mis_config));
+    std::unique_ptr<branch_and_reduce_algorithm> full_reducer_sequential = std::unique_ptr<branch_and_reduce_algorithm>(new branch_and_reduce_algorithm(adj_for_sequential_aglorithm, adj_for_sequential_aglorithm.size()));
 
-    std::vector<int> independent_set = full_reducer_parallel_for_test->compute_maximal_is();
+    std::vector<int> kernel_is = full_reducer_sequential->compute_maximal_is();
+
+
+
+    forall_nodes(G, node) {
+    	if(full_reducer_parallel->x[node] < 0) {
+	        full_reducer_parallel->x[node] = full_reducer_sequential->x[node];
+	    }
+    } endfor
+
+    full_reducer_parallel->undoReductions();
+
+    std::cout <<  "checking solution validity ..."  << std::endl;
 
     int counter = 0;
     forall_nodes(G, node) {
-            if( independent_set[node] == 0 ) {
+            if( full_reducer_parallel->x[node] == 0 ) {
                     counter++;
                     forall_out_edges(G, e, node) {
                             NodeID target = G.getEdgeTarget(e);
-                            if(independent_set[target] == 0) {
+                            if(full_reducer_parallel->x[target] == 0) {
                                 std::cout <<  "not an independent set!"  << std::endl;
-                                exit(0);
+                                exit(1);
                             }
                     } endfor
             }
     } endfor
-    std::cout <<  "done ..."  << std::endl; */
+    std::cout <<  "valid ..."  << std::endl; 
+
+    std::cout <<  "checking solution size ..."  << std::endl;
+    // initialize full reducer
+    std::vector<std::vector<int>> adj_for_sequential_aglorithm_test(G.number_of_nodes());
+
+    // Build adjacency vectors
+    forall_nodes(G, node) {
+        adj_for_sequential_aglorithm_test[node].reserve(G.getNodeDegree(node));
+        forall_out_edges(G, edge, node) {
+            NodeID neighbor = G.getEdgeTarget(edge);
+        	adj_for_sequential_aglorithm_test[node].push_back(neighbor);
+        } endfor
+    } endfor
+
+    std::unique_ptr<branch_and_reduce_algorithm> full_reducer_sequential_test = std::unique_ptr<branch_and_reduce_algorithm>(new branch_and_reduce_algorithm(adj_for_sequential_aglorithm_test, adj_for_sequential_aglorithm_test.size()));
+
+    std::vector<int> sequential_is = full_reducer_sequential_test->compute_maximal_is();
+    int sequential_size = 0;
+    for(auto i : sequential_is) {
+    	if(i == 0) {
+    		sequential_size++;
+    	}
+    }
+
+    int parallel_size = 0;
+    for(auto i : full_reducer_parallel->x) {
+    	if(i == 0) {
+    		parallel_size++;
+    	}
+    }
+
+    std::cout << "Sequential size: " << sequential_size << "; With parallel kernel: " << parallel_size << std::endl;
+
     return 0;
 }
