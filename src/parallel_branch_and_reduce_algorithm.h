@@ -65,6 +65,8 @@ public:
      */
      std::vector<int> partitions;
      std::vector<std::vector<int>> partition_nodes;
+     std::vector<bool> nodes_with_2_neighborhood_in_block;
+
 	/**
 	 * current best solution
 	 */
@@ -115,7 +117,9 @@ public:
 
 	void undoReductions();
 
-    // vestiges of original Java code
+	void compute_2_neighborhood();
+	bool compute_2_neighborhood(int v);
+
 #if 0
 	
 	void debug(String str, Object...os) {

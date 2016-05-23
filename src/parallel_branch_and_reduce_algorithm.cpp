@@ -90,11 +90,34 @@ parallel_branch_and_reduce_algorithm::parallel_branch_and_reduce_algorithm(vecto
     }
 
     partitions.resize(_N);
+    nodes_with_2_neighborhood_in_block.resize(_N, true);
     partition_nodes.resize(mis_config.number_of_partitions);
 
     for(int i = 0; i < mis_config.number_of_partitions; ++i) {
         used.push_back(fast_set(n * 2));
     }
+}
+
+// TODO: Make this faster!
+void parallel_branch_and_reduce_algorithm::compute_2_neighborhood() {
+    for(NodeID node = 0; node < N; ++node) {
+        nodes_with_2_neighborhood_in_block[node] = compute_2_neighborhood(node);
+    }
+}
+
+bool parallel_branch_and_reduce_algorithm::compute_2_neighborhood(int v) {
+    int block = partitions[v];
+    for(auto neighbor : adj[v]) {
+        if(partitions[neighbor] != block) {
+            return false;
+        }
+        for(auto neighbor2 : adj[neighbor]) {
+            if(partitions[neighbor2] != block) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 int parallel_branch_and_reduce_algorithm::deg(int v) {
@@ -197,25 +220,18 @@ bool parallel_branch_and_reduce_algorithm::fold2Reduction() {
 }
 
 bool parallel_branch_and_reduce_algorithm::fold2Reduction(int v, int partition) {
+    if(!nodes_with_2_neighborhood_in_block[v]) {
+        return false;
+    }
     vector<int> &tmp = level[partition];
     int p = 0;
     for (int u : adj[v]) {
-        if (partitions[u] != partition) {
-            return false;
-        }
         if (x[u] < 0) {
         tmp[p++] = u;
         if (p > 2) return false;
         }
     }
     if (p < 2) return false;
-    for(int i = 0; i < 2; ++i) {
-        for(int u : adj[tmp[i]]) {
-            if(partitions[u] != partition) {
-                return false;
-            }
-        }
-    }
     for (int u : adj[tmp[0]]) if (u == tmp[1]) {
         set(v, 0);
         return false;
@@ -353,6 +369,7 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
     }
+    compute_2_neighborhood();
     auto begin = omp_get_wtime();
     /*for (;;) {
         if (REDUCTION >= 1 && fold2Reduction()) continue;
