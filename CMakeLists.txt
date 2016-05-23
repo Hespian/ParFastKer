@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.2)
+cmake_minimum_required(VERSION 2.8.7)
 project(fast-reductions)
  
 file(GLOB_RECURSE SOURCES "src/*.cpp")
