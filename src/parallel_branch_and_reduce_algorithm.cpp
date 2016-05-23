@@ -180,36 +180,11 @@ bool parallel_branch_and_reduce_algorithm::fold2Reduction() {
     std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
     #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
-        vector<int> &tmp = level[partition];
         for (int v : partition_nodes[partition]) if (x[v] < 0) {
-            int p = 0;
-            for (int u : adj[v]) {
-                if (partitions[u] != partition) {
-                    goto loop;
-                }
-                if (x[u] < 0) {
-                tmp[p++] = u;
-                if (p > 2) goto loop;
-                }
+            bool changed_node = fold2Reduction(v, partition);
+            if(changed_node) {
+                changed_per_partition[partition] = 1;
             }
-            if (p < 2) continue;
-            for(int i = 0; i < 2; ++i) {
-                for(int u : adj[tmp[i]]) {
-                    if(partitions[u] != partition) {
-                        goto loop;
-                    }
-                }
-            }
-            for (int u : adj[tmp[0]]) if (u == tmp[1]) {
-                set(v, 0);
-                goto loop;
-            }
-            {
-            vector<int> copyOfTmp(tmp.begin(), tmp.begin() + 2);
-            compute_fold(vector<int>{v}, copyOfTmp, partition);
-            changed_per_partition[partition] = 1;
-            }
-loop:       ;
         }
     }
     
@@ -219,6 +194,37 @@ loop:       ;
         }
     }
     return false;
+}
+
+bool parallel_branch_and_reduce_algorithm::fold2Reduction(int v, int partition) {
+    vector<int> &tmp = level[partition];
+    int p = 0;
+    for (int u : adj[v]) {
+        if (partitions[u] != partition) {
+            return false;
+        }
+        if (x[u] < 0) {
+        tmp[p++] = u;
+        if (p > 2) return false;
+        }
+    }
+    if (p < 2) return false;
+    for(int i = 0; i < 2; ++i) {
+        for(int u : adj[tmp[i]]) {
+            if(partitions[u] != partition) {
+                return false;
+            }
+        }
+    }
+    for (int u : adj[tmp[0]]) if (u == tmp[1]) {
+        set(v, 0);
+        return false;
+    }
+    {
+    vector<int> copyOfTmp(tmp.begin(), tmp.begin() + 2);
+    compute_fold(vector<int>{v}, copyOfTmp, partition);
+    return true;
+    }
 }
 
 bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction() {
@@ -349,21 +355,8 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
     }
     auto begin = omp_get_wtime();
     for (;;) {
-        // if (REDUCTION >= 0) deg1Reduction();
-////        if (n > 100 && n * SHRINK >= rn && !outputLP && decompose()) return true;
-        // if (REDUCTION >= 0 && REDUCTION < 2 && dominateReduction()) continue;
-        // if (REDUCTION >= 2 && unconfinedReduction()) continue;
-        // if (REDUCTION >= 1 && lpReduction()) continue;
-        /*if (REDUCTION >= 3) {
-            int r = packingReduction();
-            if (r < 0) return;
-            if (r > 0) continue;
-        }*/
         if (REDUCTION >= 1 && fold2Reduction()) continue;
         if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
-        // if (REDUCTION >= 2 && twinReduction()) continue;
-        // if (REDUCTION >= 2 && funnelReduction()) continue;
-        // if (REDUCTION >= 2 && deskReduction()) continue;
         break;
     }
     auto end = omp_get_wtime();
