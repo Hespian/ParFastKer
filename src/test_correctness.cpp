@@ -17,6 +17,7 @@
 #include "sequential/branch_and_reduce_algorithm.h"
 #include "parallel_branch_and_reduce_algorithm.h"
 #include <memory>
+#include <limits>
 
 int main(int argn, char **argv) {
     mis_log::instance()->restart_total_timer();
@@ -92,14 +93,16 @@ int main(int argn, char **argv) {
 
     std::unique_ptr<branch_and_reduce_algorithm> full_reducer_sequential = std::unique_ptr<branch_and_reduce_algorithm>(new branch_and_reduce_algorithm(adj_for_sequential_aglorithm, adj_for_sequential_aglorithm.size()));
 
-    std::vector<int> kernel_is = full_reducer_sequential->compute_maximal_is();
+    timer t = timer();
+    double timelimit = std::numeric_limits<double>::max();
+    full_reducer_sequential->solve(t, timelimit);
 
 
 
     std::cout << "Applying solution to parallel result" << std::endl;
     forall_nodes(G, node) {
     	if(full_reducer_parallel->x[node] < 0) {
-	        full_reducer_parallel->x[node] = kernel_is[parallel_to_sequential_map[node]];
+	        full_reducer_parallel->x[node] = full_reducer_sequential->y[parallel_to_sequential_map[node]];
 	    }
     } endfor
 
@@ -120,9 +123,10 @@ int main(int argn, char **argv) {
                     } endfor
             }
     } endfor
-    std::cout <<  "valid ..."  << std::endl; 
+    std::cout <<  "valid"  << std::endl; 
 
     std::cout <<  "checking solution size ..."  << std::endl;
+    std::cout <<  "Solving without parallel reductions ..."  << std::endl;
     // initialize full reducer
     std::vector<std::vector<int>> adj_for_sequential_aglorithm_test(G.number_of_nodes());
 
@@ -137,25 +141,26 @@ int main(int argn, char **argv) {
 
     std::unique_ptr<branch_and_reduce_algorithm> full_reducer_sequential_test = std::unique_ptr<branch_and_reduce_algorithm>(new branch_and_reduce_algorithm(adj_for_sequential_aglorithm_test, adj_for_sequential_aglorithm_test.size()));
 
-    std::vector<int> sequential_is = full_reducer_sequential_test->compute_maximal_is();
+    t = timer();
+    full_reducer_sequential_test->solve(t, timelimit);
 
     std::cout <<  "checking sequential solution validity ..."  << std::endl;
     forall_nodes(G, node) {
-            if( sequential_is[node] == 0 ) {
+            if( full_reducer_sequential_test->y[node] == 0 ) {
                     counter++;
                     forall_out_edges(G, e, node) {
                             NodeID target = G.getEdgeTarget(e);
-                            if(sequential_is[target] == 0) {
-                                std::cout <<  "not an independent set! "  << node << " and " << target << " are both in the is!" << std::endl;
+                            if(full_reducer_sequential_test->y[target] == 0) {
+                                std::cout <<  "Not an independent set! "  << node << " and " << target << " are both in the is!" << std::endl;
                                 exit(1);
                             }
                     } endfor
             }
     } endfor
-    std::cout <<  "valid ..."  << std::endl; 
+    std::cout <<  "valid"  << std::endl; 
 
     int sequential_size = 0;
-    for(auto i : sequential_is) {
+    for(auto i : full_reducer_sequential_test->y) {
     	if(i == 0) {
     		sequential_size++;
     	}
@@ -168,7 +173,12 @@ int main(int argn, char **argv) {
     	}
     }
 
-    std::cout << "Sequential size: " << sequential_size << "; With parallel kernel: " << parallel_size << std::endl;
+    if(sequential_size != parallel_size){
+        std::cout << "Sequential size: " << sequential_size << "; With parallel kernel: " << parallel_size << std::endl;
+        exit(1);
+    }
+
+    std::cout << "Same size" << std::endl;
 
     return 0;
 }
