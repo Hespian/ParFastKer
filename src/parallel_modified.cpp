@@ -17,12 +17,12 @@
 
 // local includes
 #include "parallel_modified.h"
-#include "parallel_branch_and_reduce_algorithm.h"
+#include "parallel_reductions.h"
 
 // system includes
 #include <vector>
 
-parallel_modified::parallel_modified(int const _add, std::vector<int> &_removed, std::vector<int> &_vs, std::vector<std::vector<int>> &newAdj, parallel_branch_and_reduce_algorithm *_pAlg)
+parallel_modified::parallel_modified(int const _add, std::vector<int> &_removed, std::vector<int> &_vs, std::vector<std::vector<int>> &newAdj, parallel_reductions *_pAlg)
 : add(_add)
 , pAlg(_pAlg) 
 {
@@ -39,7 +39,7 @@ parallel_modified::parallel_modified(int const _add, std::vector<int> &_removed,
     }
 }
 
-parallel_modified::parallel_modified(std::vector<int> &_removed, std::vector<int> &_vs, parallel_branch_and_reduce_algorithm *_pAlg)
+parallel_modified::parallel_modified(std::vector<int> &_removed, std::vector<int> &_vs, parallel_reductions *_pAlg)
 : add(0)
 , pAlg(_pAlg)
 {

@@ -23,7 +23,7 @@
 #include <vector>
 #include <cassert>
 
-class parallel_branch_and_reduce_algorithm;
+class parallel_reductions;
 
 class parallel_modified {
 
@@ -32,12 +32,12 @@ public:
     std::vector<int> removed;
     std::vector<int> vs;
     std::vector<std::vector<int>> oldAdj;
-    parallel_branch_and_reduce_algorithm *pAlg;
+    parallel_reductions *pAlg;
 
 public:
-    parallel_modified(int const add, std::vector<int> &removed, std::vector<int> &vs, std::vector<std::vector<int>> &newAdj, parallel_branch_and_reduce_algorithm *_pAlg);
+    parallel_modified(int const add, std::vector<int> &removed, std::vector<int> &vs, std::vector<std::vector<int>> &newAdj, parallel_reductions *_pAlg);
 
-    parallel_modified(std::vector<int> &removed, std::vector<int> &vs, parallel_branch_and_reduce_algorithm *_pAlg);
+    parallel_modified(std::vector<int> &removed, std::vector<int> &vs, parallel_reductions *_pAlg);
 
     virtual ~parallel_modified() {};
 
@@ -50,11 +50,11 @@ class parallel_fold : public parallel_modified
 {
 
 public:
-    parallel_fold(int const add, std::vector<int> &removed, std::vector<int> &vs, std::vector<std::vector<int>> &newAdj, parallel_branch_and_reduce_algorithm *_pAlg)
+    parallel_fold(int const add, std::vector<int> &removed, std::vector<int> &vs, std::vector<std::vector<int>> &newAdj, parallel_reductions *_pAlg)
     : parallel_modified(add, removed, vs, newAdj, _pAlg)
     { }
 
-    parallel_fold(std::vector<int> &removed, std::vector<int> &vs, parallel_branch_and_reduce_algorithm *_pAlg)
+    parallel_fold(std::vector<int> &removed, std::vector<int> &vs, parallel_reductions *_pAlg)
     : parallel_modified(removed, vs, _pAlg)
     { }
 
@@ -77,13 +77,13 @@ class parallel_alternative : public parallel_modified {
 public:
     int k;
 
-    parallel_alternative(int const add, std::vector<int> &removed, std::vector<int> &vs, std::vector<std::vector<int>> &newAdj, parallel_branch_and_reduce_algorithm *_pAlg, int k)
+    parallel_alternative(int const add, std::vector<int> &removed, std::vector<int> &vs, std::vector<std::vector<int>> &newAdj, parallel_reductions *_pAlg, int k)
     : parallel_modified(add, removed, vs, newAdj, _pAlg)
     {
         this->k = k;
     }
 
-    parallel_alternative(std::vector<int> &removed, std::vector<int> &vs, parallel_branch_and_reduce_algorithm *_pAlg, int k)
+    parallel_alternative(std::vector<int> &removed, std::vector<int> &vs, parallel_reductions *_pAlg, int k)
     : parallel_modified(removed, vs, _pAlg)
     {
         this->k = k;

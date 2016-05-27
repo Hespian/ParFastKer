@@ -1,5 +1,5 @@
  /******************************************************************************
- * parallel_branch_and_reduce_algorithm.h
+ * parallel_reductions.h
  *
  * Copyright (C) 2015-2017 Darren Strash <strash@kit.edu>
  *
@@ -17,8 +17,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 
-#ifndef PARALLEL_BRANCH_AND_REDUCE_SOLVER_H
-#define PARALLEL_BRANCH_AND_REDUCE_SOLVER_H
+#ifndef PARALLEL_REDUCTIONS_H
+#define PARALLEL_REDUCTIONS_H
 
 // local includes
 #include "fast_set.h"
@@ -35,7 +35,7 @@
 #include <memory>
 
 
-class parallel_branch_and_reduce_algorithm
+class parallel_reductions
 {
 friend class parallel_modified;
 friend class fold;
@@ -95,7 +95,7 @@ public:
 	std::vector<std::vector<std::shared_ptr<parallel_modified>>> modifieds;
 	std::vector<int> modifiedN;
 			
-	parallel_branch_and_reduce_algorithm(std::vector<std::vector<int>> &_adj, int const _N, MISConfig mis_config);
+	parallel_reductions(std::vector<std::vector<int>> &_adj, int const _N, MISConfig mis_config);
 
 	int deg(int v);
 	void set(int v, int a);
@@ -150,4 +150,4 @@ public:
 #endif // 0
 };
 
-#endif //PARALLEL_BRANCH_AND_REDUCE_SOLVER_H
+#endif //PARALLEL_REDUCTIONS_H

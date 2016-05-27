@@ -15,7 +15,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 
-#include "parallel_branch_and_reduce_algorithm.h"
+#include "parallel_reductions.h"
 // #include "mis_config.h"
 #include "fast_set.h"
 #include "parallel_modified.h"
@@ -41,14 +41,14 @@
 
 using namespace std;
 
-int  parallel_branch_and_reduce_algorithm::REDUCTION   = 3;
-int  parallel_branch_and_reduce_algorithm::LOWER_BOUND = 4;
-int  parallel_branch_and_reduce_algorithm::BRANCHING   = 2;
-bool parallel_branch_and_reduce_algorithm::outputLP    = false;
-long parallel_branch_and_reduce_algorithm::nBranchings = 0;
-int  parallel_branch_and_reduce_algorithm::debug       = 0;
+int  parallel_reductions::REDUCTION   = 3;
+int  parallel_reductions::LOWER_BOUND = 4;
+int  parallel_reductions::BRANCHING   = 2;
+bool parallel_reductions::outputLP    = false;
+long parallel_reductions::nBranchings = 0;
+int  parallel_reductions::debug       = 0;
 
-parallel_branch_and_reduce_algorithm::parallel_branch_and_reduce_algorithm(vector<vector<int>> &_adj, int const _N, MISConfig mis_config)
+parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N, MISConfig mis_config)
 : adj() 
 , n(_adj.size())
 , mis_config(mis_config)
@@ -99,13 +99,13 @@ parallel_branch_and_reduce_algorithm::parallel_branch_and_reduce_algorithm(vecto
 }
 
 // TODO: Make this faster!
-void parallel_branch_and_reduce_algorithm::compute_2_neighborhood() {
+void parallel_reductions::compute_2_neighborhood() {
     for(NodeID node = 0; node < N; ++node) {
         nodes_with_2_neighborhood_in_block[node] = compute_2_neighborhood(node);
     }
 }
 
-bool parallel_branch_and_reduce_algorithm::compute_2_neighborhood(int v) {
+bool parallel_reductions::compute_2_neighborhood(int v) {
     int block = partitions[v];
     for(auto neighbor : adj[v]) {
         if(partitions[neighbor] != block) {
@@ -120,14 +120,14 @@ bool parallel_branch_and_reduce_algorithm::compute_2_neighborhood(int v) {
     return true;
 }
 
-int parallel_branch_and_reduce_algorithm::deg(int v) {
+int parallel_reductions::deg(int v) {
     assert(x[v] < 0);
     int deg = 0;
     for (int u : adj[v]) if (x[u] < 0) deg++;
     return deg;
 }
 
-void parallel_branch_and_reduce_algorithm::set(int v, int a)
+void parallel_reductions::set(int v, int a)
 {
     assert(x[v] < 0);
     x[v] = a;
@@ -140,7 +140,7 @@ void parallel_branch_and_reduce_algorithm::set(int v, int a)
 
 // methods that modify the graph
 
-void parallel_branch_and_reduce_algorithm::compute_fold(vector<int> const &S, vector<int> const &NS, int partition) {
+void parallel_reductions::compute_fold(vector<int> const &S, vector<int> const &NS, int partition) {
     assert(NS.size() == S.size() + 1);
     vector<int> removed(S.size() * 2);
     for (unsigned int i = 0; i < S.size(); i++) removed[i] = S[i];
@@ -191,7 +191,7 @@ void parallel_branch_and_reduce_algorithm::compute_fold(vector<int> const &S, ve
 ////    cout << __LINE__ << ", " << this << ", " << depth << ": Setting modifieds[" << modifiedN-1 << "]=" << modifieds[modifiedN-1] << endl << flush;
 }
 
-void parallel_branch_and_reduce_algorithm::reverse() {
+void parallel_reductions::reverse() {
     for (int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
         for (int i = modifiedN[partition] - 1; i >= 0; i--) {
                 modifieds[partition][i]->reverse(y);
@@ -199,7 +199,7 @@ void parallel_branch_and_reduce_algorithm::reverse() {
     }
 }
 
-bool parallel_branch_and_reduce_algorithm::fold2Reduction() {
+bool parallel_reductions::fold2Reduction() {
     std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
     #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
@@ -219,7 +219,7 @@ bool parallel_branch_and_reduce_algorithm::fold2Reduction() {
     return false;
 }
 
-bool parallel_branch_and_reduce_algorithm::fold2Reduction(int v, int partition) {
+bool parallel_reductions::fold2Reduction(int v, int partition) {
     if(!nodes_with_2_neighborhood_in_block[v]) {
         return false;
     }
@@ -243,7 +243,7 @@ bool parallel_branch_and_reduce_algorithm::fold2Reduction(int v, int partition) 
     }
 }
 
-bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction() {
+bool parallel_reductions::isolatedCliqueReduction() {
     std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
 
     #pragma omp parallel for
@@ -267,7 +267,7 @@ bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction() {
     return false;
 }
 
-bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction(NodeID vertex, int partition) {
+bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) {
     auto degreeVertex = deg(vertex);
     for (int neighbor : adj[vertex]) {
         if (partitions[neighbor] != partition) {
@@ -300,7 +300,7 @@ bool parallel_branch_and_reduce_algorithm::isolatedCliqueReduction(NodeID vertex
     return true;
 }
 
-std::string parallel_branch_and_reduce_algorithm::debugString() const {
+std::string parallel_reductions::debugString() const {
     stringstream ins;
 #ifdef PUT_TIME
     time_t rawtime;
@@ -325,7 +325,7 @@ std::string parallel_branch_and_reduce_algorithm::debugString() const {
 
 }
 
-void parallel_branch_and_reduce_algorithm::PrintState() const
+void parallel_reductions::PrintState() const
 {
     cout << "State(" << this << "):" << endl << flush;
     cout << "adj=" << endl << flush;
@@ -350,7 +350,7 @@ void parallel_branch_and_reduce_algorithm::PrintState() const
 }
 
 
-void parallel_branch_and_reduce_algorithm::reduce_graph()
+void parallel_reductions::reduce_graph()
 {
     std::vector<int> xadj;
     std::vector<int> adjncy;
@@ -412,7 +412,7 @@ void parallel_branch_and_reduce_algorithm::reduce_graph()
     cout << "There are " << low_degree_count << " degree 0 and 1 vertices left!" << endl << flush;
 }
 
-size_t parallel_branch_and_reduce_algorithm::get_current_is_size() const {
+size_t parallel_reductions::get_current_is_size() const {
 
     vector<int> x2(x);
 
@@ -432,7 +432,7 @@ size_t parallel_branch_and_reduce_algorithm::get_current_is_size() const {
     return current_is_size;
 }
 
-size_t parallel_branch_and_reduce_algorithm::get_current_is_size_with_folds() const {
+size_t parallel_reductions::get_current_is_size_with_folds() const {
 
     size_t folded_vertex_count(0);
     size_t current_is_size(0);
@@ -444,7 +444,7 @@ size_t parallel_branch_and_reduce_algorithm::get_current_is_size_with_folds() co
     return current_is_size + folded_vertex_count/2;
 }
 
-void parallel_branch_and_reduce_algorithm::undoReductions() {
+void parallel_reductions::undoReductions() {
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
         for (int i = modifiedN[partition] - 1; i >= 0; i--) {
             modifieds[partition][i]->reverse(x);
@@ -452,7 +452,7 @@ void parallel_branch_and_reduce_algorithm::undoReductions() {
     }
 }
 
-bool parallel_branch_and_reduce_algorithm::folded_vertices_exist() const {
+bool parallel_reductions::folded_vertices_exist() const {
 
     vector<int> x2(x);
 
@@ -469,7 +469,7 @@ bool parallel_branch_and_reduce_algorithm::folded_vertices_exist() const {
     return false;
 }
 
-vector<int> parallel_branch_and_reduce_algorithm::compute_maximal_is() {
+vector<int> parallel_reductions::compute_maximal_is() {
 
     int vertexToForceInIndependentSet(0);
     while (vertexToForceInIndependentSet != -1) {
@@ -507,7 +507,7 @@ vector<int> parallel_branch_and_reduce_algorithm::compute_maximal_is() {
     return x2;
 }
 
-size_t parallel_branch_and_reduce_algorithm::compute_alternative_maximal_is_size() {
+size_t parallel_reductions::compute_alternative_maximal_is_size() {
 
     int vertexToForceInIndependentSet(0);
     while (vertexToForceInIndependentSet != -1) {
@@ -537,7 +537,7 @@ size_t parallel_branch_and_reduce_algorithm::compute_alternative_maximal_is_size
     return sizeOfIS + numberOfFoldedVertices/2;
 }
 
-size_t parallel_branch_and_reduce_algorithm::number_of_nodes_remaining() const {
+size_t parallel_reductions::number_of_nodes_remaining() const {
 
     size_t node_count(0);
     for (int i : x) if (i == -1) node_count++;
@@ -545,7 +545,7 @@ size_t parallel_branch_and_reduce_algorithm::number_of_nodes_remaining() const {
     return node_count;
 }
 
-void parallel_branch_and_reduce_algorithm::force_into_independent_set(vector<NodeID> const &nodes) {
+void parallel_reductions::force_into_independent_set(vector<NodeID> const &nodes) {
 
     for (NodeID const node : nodes) {
         assert(x[node] == -1); // should not have been assigned yet.
