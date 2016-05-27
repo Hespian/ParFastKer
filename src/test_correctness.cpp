@@ -63,31 +63,9 @@ int main(int argn, char **argv) {
     mis_log::instance()->print_reduction(mis_config, is_base, full_reducer_parallel->number_of_nodes_remaining());
 
 
-    std::cout << "Generating new graph for sequential solver" << std::endl;
-    std::vector<int> parallel_to_sequential_map(G.number_of_nodes());
-    int nodecount = 0;
-    forall_nodes(G, node) {
-    	if(full_reducer_parallel->x[node] < 0) {
-	        parallel_to_sequential_map[node] = nodecount++;
-	    }
-    } endfor
+    std::cout << "Generating new graph for sequential solver..." << std::endl;
 
-
-
-    // initialize full reducer
-    std::vector<std::vector<int>> adj_for_sequential_aglorithm(G.number_of_nodes());
-
-    // Build adjacency vectors
-    forall_nodes(G, node) {
-    	if(full_reducer_parallel->x[node] < 0) {
-	        adj_for_sequential_aglorithm[parallel_to_sequential_map[node]].reserve(G.getNodeDegree(node));
-	        for(auto neighbor : full_reducer_parallel->adj[node]) {
-	            if(full_reducer_parallel->x[neighbor] < 0) {
-	            	adj_for_sequential_aglorithm[parallel_to_sequential_map[node]].push_back(parallel_to_sequential_map[neighbor]);
-	            }
-	        }
-	    }
-    } endfor
+    std::vector<std::vector<int>> adj_for_sequential_aglorithm = full_reducer_parallel->getKernel();
 
     std::cout << "Solving kernel with sequential algorithm" << std::endl;
 
@@ -100,11 +78,7 @@ int main(int argn, char **argv) {
 
 
     std::cout << "Applying solution to parallel result" << std::endl;
-    forall_nodes(G, node) {
-    	if(full_reducer_parallel->x[node] < 0) {
-	        full_reducer_parallel->x[node] = full_reducer_sequential->y[parallel_to_sequential_map[node]];
-	    }
-    } endfor
+    full_reducer_parallel->applyKernelSolution(full_reducer_sequential->y);
 
     full_reducer_parallel->undoReductions();
 

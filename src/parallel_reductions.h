@@ -67,6 +67,11 @@ public:
      std::vector<std::vector<int>> partition_nodes;
      std::vector<bool> nodes_with_2_neighborhood_in_block;
 
+     /*
+      * Mapping from 
+      */
+    std::vector<int> graph_to_kernel_map;
+
 	/**
 	 * current best solution
 	 */
@@ -96,6 +101,9 @@ public:
 	std::vector<int> modifiedN;
 			
 	parallel_reductions(std::vector<std::vector<int>> &_adj, int const _N, MISConfig mis_config);
+
+	std::vector<std::vector<int>> getKernel();
+	void applyKernelSolution(std::vector<int> kernel_solution);
 
 	int deg(int v);
 	void set(int v, int a);

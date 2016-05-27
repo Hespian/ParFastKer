@@ -557,3 +557,39 @@ void parallel_reductions::force_into_independent_set(vector<NodeID> const &nodes
     }
 }
 
+std::vector<std::vector<int>> parallel_reductions::getKernel() {
+    graph_to_kernel_map = std::vector<int> (N);
+    int nodecount = 0;
+    for (int node = 0; node < N; ++node) {
+        if(x[node] < 0) {
+            graph_to_kernel_map[node] = nodecount++;
+        }
+    }
+
+    std::vector<std::vector<int>> kernel_adj(N);
+
+    // Build adjacency vectors
+    #pragma omp parallel for
+    for(int node = 0; node < N; ++node) {
+        if(x[node] < 0) {
+            kernel_adj[graph_to_kernel_map[node]].reserve(adj[node].size());
+            for(auto neighbor : adj[node]) {
+                if(x[neighbor] < 0) {
+                    kernel_adj[graph_to_kernel_map[node]].push_back(graph_to_kernel_map[neighbor]);
+                }
+            }
+        }
+    }
+
+    return kernel_adj;
+}
+
+void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution) {
+    #pragma omp parallel for
+    for(int node = 0; node < N; ++node) {
+        if(x[node] < 0) {
+            x[node] = kernel_solution[graph_to_kernel_map[node]];
+        }
+    }
+}
+
