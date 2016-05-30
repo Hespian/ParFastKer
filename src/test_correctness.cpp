@@ -15,7 +15,7 @@
 #include "data_structure/graph_access.h"
 // #include "data_structure/mis_permutation.h"
 #include "sequential/branch_and_reduce_algorithm.h"
-#include "parallel_reductions.h"
+#include "full_reductions.h"
 #include <memory>
 #include <limits>
 
@@ -55,7 +55,7 @@ int main(int argn, char **argv) {
         } endfor
     } endfor
 
-    std::unique_ptr<parallel_reductions> full_reducer_parallel = std::unique_ptr<parallel_reductions>(new parallel_reductions(adj_for_parallel_aglorithm, adj_for_parallel_aglorithm.size(), mis_config));
+    std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, mis_config));
 
     full_reducer_parallel->reduce_graph();
 
@@ -80,17 +80,16 @@ int main(int argn, char **argv) {
     std::cout << "Applying solution to parallel result" << std::endl;
     full_reducer_parallel->applyKernelSolution(full_reducer_sequential->y);
 
-    full_reducer_parallel->undoReductions();
-
     std::cout <<  "checking solution validity ..."  << std::endl;
+    std::vector<int> parallel_solution = full_reducer_parallel->getSolution();
 
     int counter = 0;
     forall_nodes(G, node) {
-            if( full_reducer_parallel->x[node] == 0 ) {
+            if( parallel_solution[node] == 0 ) {
                     counter++;
                     forall_out_edges(G, e, node) {
                             NodeID target = G.getEdgeTarget(e);
-                            if(full_reducer_parallel->x[target] == 0) {
+                            if(parallel_solution[target] == 0) {
                                 std::cout <<  "not an independent set! "  << node << " and " << target << " are both in the is!" << std::endl;
                                 exit(1);
                             }
@@ -141,7 +140,7 @@ int main(int argn, char **argv) {
     }
 
     int parallel_size = 0;
-    for(auto i : full_reducer_parallel->x) {
+    for(auto i : parallel_solution) {
     	if(i == 0) {
     		parallel_size++;
     	}

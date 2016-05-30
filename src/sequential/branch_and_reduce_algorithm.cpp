@@ -238,6 +238,13 @@ void branch_and_reduce_algorithm::reverse() {
     }
 }
 
+void branch_and_reduce_algorithm::undoReductions() {
+    for (int i = modifiedN - 1; i >= 0; i--) {
+////        cout << __LINE__ << ", " << this << ": modifieds[" << i << "] is " << modifieds[i] << endl << flush;
+        modifieds[i]->reverse(x);
+    }
+}
+
 
 // lower bounds
 
@@ -1636,6 +1643,28 @@ void branch_and_reduce_algorithm::PrintState() const
     cout << endl << flush;
 }
 
+void branch_and_reduce_algorithm::reduce_graph_few_reductions()
+{
+    int oldn = rn;
+    clock_t begin = clock();
+    for (;;) {
+        if (REDUCTION >= 1 && fold2Reduction()) continue;
+        if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
+        break;
+    }
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    // cout << "Sequential took " << elapsed_secs << " seconds" << endl;
+////    opt = crt;
+    if (debug >= 2 && depth <= maxDepth && oldn != rn) fprintf(stderr, "%sreduce: %d -> %d\n", debugString().c_str(), oldn, rn);
+    size_t low_degree_count(0);
+    for (int v = 0; v < n; v++) if (x[v] < 0) {
+        if (deg(v) <= 1) {
+            low_degree_count++;
+        }
+    }
+    // cout << "There are " << low_degree_count << " degree 0 and 1 vertices left!" << endl << flush;
+}
 
 void branch_and_reduce_algorithm::reduce_graph()
 {
@@ -1934,5 +1963,41 @@ void branch_and_reduce_algorithm::convert_adj_lists(graph_access & G, std::vecto
         }
     }
 #endif // DEBUG
+
+}
+
+std::vector<std::vector<int>> branch_and_reduce_algorithm::getKernel() {
+    graph_to_kernel_map = std::vector<int> (N);
+    int nodecount = 0;
+    for (int node = 0; node < N; ++node) {
+        if(x[node] < 0) {
+            graph_to_kernel_map[node] = nodecount++;
+        }
+    }
+
+    std::vector<std::vector<int>> kernel_adj(nodecount);
+
+    // Build adjacency vectors
+    for(int node = 0; node < N; ++node) {
+        if(x[node] < 0) {
+            kernel_adj[graph_to_kernel_map[node]].reserve(adj[node].size());
+            for(auto neighbor : adj[node]) {
+                if(x[neighbor] < 0) {
+                    kernel_adj[graph_to_kernel_map[node]].push_back(graph_to_kernel_map[neighbor]);
+                }
+            }
+        }
+    }
+
+    return kernel_adj;
+}
+
+void branch_and_reduce_algorithm::applyKernelSolution(std::vector<int> kernel_solution) {
+    #pragma omp parallel for
+    for(int node = 0; node < N; ++node) {
+        if(x[node] < 0) {
+            x[node] = kernel_solution[graph_to_kernel_map[node]];
+        }
+    }
 }
 

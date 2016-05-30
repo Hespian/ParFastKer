@@ -15,7 +15,7 @@
 #include "data_structure/graph_access.h"
 // #include "data_structure/mis_permutation.h"
 #include "sequential/branch_and_reduce_algorithm.h"
-#include "parallel_reductions.h"
+#include "full_reductions.h"
 #include <memory>
 
 int main(int argn, char **argv) {
@@ -53,7 +53,7 @@ int main(int argn, char **argv) {
         } endfor
     } endfor
 
-    std::unique_ptr<parallel_reductions> full_reducer_parallel = std::unique_ptr<parallel_reductions>(new parallel_reductions(adj_for_parallel_aglorithm, adj_for_parallel_aglorithm.size(), mis_config));
+    std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, mis_config));
 
     full_reducer_parallel->reduce_graph();
 

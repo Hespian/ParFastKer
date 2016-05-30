@@ -162,6 +162,13 @@ public:
     void initial_reduce_graph();
     void reduce_graph();
 
+    // For use in full_reductions
+    void reduce_graph_few_reductions();
+    std::vector<std::vector<int>> getKernel();
+    void applyKernelSolution(std::vector<int> kernel_solution);
+    void undoReductions();
+    std::vector<int> graph_to_kernel_map;
+
     void restore_to_snapshot();
 
     std::string debugString() const;

@@ -1,20 +1,3 @@
- /******************************************************************************
- * Copyright (C) 2015-2017 Darren Strash <strash@kit.edu>
- *
- * This program is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation, either version 2 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program.  If not, see <http://www.gnu.org/licenses/>.
- *****************************************************************************/
-
 #include "parallel_reductions.h"
 // #include "mis_config.h"
 #include "fast_set.h"
@@ -49,7 +32,7 @@ bool parallel_reductions::outputLP    = false;
 long parallel_reductions::nBranchings = 0;
 int  parallel_reductions::debug       = 0;
 
-parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N, MISConfig mis_config)
+parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N, MISConfig &mis_config)
 : adj() 
 , n(_adj.size())
 , mis_config(mis_config)
@@ -597,7 +580,7 @@ std::vector<std::vector<int>> parallel_reductions::getKernel() {
         }
     }
 
-    std::vector<std::vector<int>> kernel_adj(N);
+    std::vector<std::vector<int>> kernel_adj(nodecount);
 
     // Build adjacency vectors
     #pragma omp parallel for
