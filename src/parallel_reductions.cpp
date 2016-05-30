@@ -35,6 +35,7 @@
 #include <deque>
 #include <chrono>
 #include <omp.h>
+#include <list>
 
 #include "kaHIP_interface.h"
 ////#define debug(x) {fprintf(2, x);}
@@ -98,26 +99,21 @@ parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N
     }
 }
 
-// TODO: Make this faster!
 void parallel_reductions::compute_2_neighborhood() {
-    for(NodeID node = 0; node < N; ++node) {
-        nodes_with_2_neighborhood_in_block[node] = compute_2_neighborhood(node);
-    }
-}
-
-bool parallel_reductions::compute_2_neighborhood(int v) {
-    int block = partitions[v];
-    for(auto neighbor : adj[v]) {
-        if(partitions[neighbor] != block) {
-            return false;
-        }
-        for(auto neighbor2 : adj[neighbor]) {
-            if(partitions[neighbor2] != block) {
-                return false;
+    #pragma omp parallel for
+    for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
+        for(NodeID node : partition_nodes[partition]) {
+            for(NodeID neighbor1 : adj[node]) {
+                if(partitions[neighbor1] != partition) {
+                    nodes_with_2_neighborhood_in_block[node] = false;
+                    for(NodeID neighbor2 : adj[node]) {
+                        nodes_with_2_neighborhood_in_block[neighbor2] = false;
+                    }
+                    break;
+                }
             }
         }
     }
-    return true;
 }
 
 int parallel_reductions::deg(int v) {
@@ -369,8 +365,19 @@ void parallel_reductions::reduce_graph()
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
     }
-    compute_2_neighborhood();
     auto begin = omp_get_wtime();
+    compute_2_neighborhood();
+    auto end = omp_get_wtime();
+    double elapsed_secs = double(end - begin);
+    cout << "Preprocessing took " << elapsed_secs << " seconds" << endl;
+    int numberNodesThatCouldFold = 0;
+    for(bool couldFold : nodes_with_2_neighborhood_in_block) {
+        if(couldFold) {
+            numberNodesThatCouldFold++;
+        }
+    }
+    std::cout << numberNodesThatCouldFold << " of " << N << " nodes are considered for vertex folding" << std::endl;
+    begin = omp_get_wtime();
     /*for (;;) {
         if (REDUCTION >= 1 && fold2Reduction()) continue;
         if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
@@ -400,8 +407,8 @@ void parallel_reductions::reduce_graph()
         }
     }
 
-    auto end = omp_get_wtime();
-    double elapsed_secs = double(end - begin);
+    end = omp_get_wtime();
+    elapsed_secs = double(end - begin);
     cout << "Parallel took " << elapsed_secs << " seconds" << endl;
     size_t low_degree_count(0);
     for (int v = 0; v < n; v++) if (x[v] < 0) {

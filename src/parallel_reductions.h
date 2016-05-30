@@ -33,6 +33,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <list>
 
 
 class parallel_reductions
@@ -65,7 +66,7 @@ public:
      */
      std::vector<int> partitions;
      std::vector<std::vector<int>> partition_nodes;
-     std::vector<bool> nodes_with_2_neighborhood_in_block;
+     std::vector<char> nodes_with_2_neighborhood_in_block;
 
      /*
       * Mapping from 
@@ -126,7 +127,6 @@ public:
 	void undoReductions();
 
 	void compute_2_neighborhood();
-	bool compute_2_neighborhood(int v);
 
 #if 0
 	
