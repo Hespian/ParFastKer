@@ -64,9 +64,11 @@ public:
     /*
      * The partition used for parallelization
      */
-     std::vector<int> partitions;
-     std::vector<std::vector<int>> partition_nodes;
-     std::vector<char> nodes_with_2_neighborhood_in_block;
+    std::vector<int> partitions;
+    std::vector<std::vector<int>> partition_nodes;
+#ifndef NO_PREPROCESSING
+	std::vector<char> nodes_with_2_neighborhood_in_block;
+#endif
 
      /*
       * Mapping from 
@@ -126,7 +128,9 @@ public:
 
 	void undoReductions();
 
+#ifndef NO_PREPROCESSING
 	void compute_2_neighborhood();
+#endif
 
 #if 0
 	

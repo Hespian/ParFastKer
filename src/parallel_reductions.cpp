@@ -91,7 +91,10 @@ parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N
     }
 
     partitions.resize(_N);
+#ifndef NO_PREPROCESSING
     nodes_with_2_neighborhood_in_block.resize(_N, true);
+#endif
+
     partition_nodes.resize(mis_config.number_of_partitions);
 
     for(int i = 0; i < mis_config.number_of_partitions; ++i) {
@@ -99,6 +102,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N
     }
 }
 
+#ifndef NO_PREPROCESSING
 void parallel_reductions::compute_2_neighborhood() {
     #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
@@ -115,6 +119,7 @@ void parallel_reductions::compute_2_neighborhood() {
         }
     }
 }
+#endif
 
 int parallel_reductions::deg(int v) {
     assert(x[v] < 0);
@@ -216,18 +221,34 @@ bool parallel_reductions::fold2Reduction() {
 }
 
 bool parallel_reductions::fold2Reduction(int v, int partition) {
+#ifndef NO_PREPROCESSING
     if(!nodes_with_2_neighborhood_in_block[v]) {
         return false;
     }
+#endif
     vector<int> &tmp = level[partition];
     int p = 0;
     for (int u : adj[v]) {
+#ifdef NO_PREPROCESSING
+        if (partitions[u] != partition) {
+            return false;
+        }
+#endif
         if (x[u] < 0) {
         tmp[p++] = u;
         if (p > 2) return false;
         }
     }
     if (p < 2) return false;
+#ifdef NO_PREPROCESSING
+    for(int i = 0; i < 2; ++i) {
+        for(int u : adj[tmp[i]]) {
+            if(partitions[u] != partition) {
+                return false;
+            }
+        }
+    }
+#endif
     for (int u : adj[tmp[0]]) if (u == tmp[1]) {
         set(v, 0);
         return false;
@@ -365,10 +386,12 @@ void parallel_reductions::reduce_graph()
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
     }
-    auto begin = omp_get_wtime();
+    double begin, end, elapsed_secs;
+#ifndef NO_PREPROCESSING
+    begin = omp_get_wtime();
     compute_2_neighborhood();
-    auto end = omp_get_wtime();
-    double elapsed_secs = double(end - begin);
+    end = omp_get_wtime();
+    elapsed_secs = double(end - begin);
     cout << "Preprocessing took " << elapsed_secs << " seconds" << endl;
     int numberNodesThatCouldFold = 0;
     for(bool couldFold : nodes_with_2_neighborhood_in_block) {
@@ -377,6 +400,7 @@ void parallel_reductions::reduce_graph()
         }
     }
     std::cout << numberNodesThatCouldFold << " of " << N << " nodes are considered for vertex folding" << std::endl;
+#endif
     begin = omp_get_wtime();
     /*for (;;) {
         if (REDUCTION >= 1 && fold2Reduction()) continue;
