@@ -19,6 +19,8 @@
 #include <chrono>
 #include <omp.h>
 #include <list>
+#include <iostream>
+#include <fstream>
 
 #include "kaHIP_interface.h"
 ////#define debug(x) {fprintf(2, x);}
@@ -349,10 +351,8 @@ void parallel_reductions::PrintState() const
     cout << endl << flush;
 }
 
-
-void parallel_reductions::reduce_graph()
-{
-    std::vector<int> xadj;
+void parallel_reductions::partition_graph() {
+    /*std::vector<int> xadj;
     std::vector<int> adjncy;
     for(auto node_adj_list : adj) {
         xadj.push_back(adjncy.size());
@@ -369,6 +369,67 @@ void parallel_reductions::reduce_graph()
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
     }
+*/
+
+    int edgecount = 0;
+    for(auto node_adj : adj) {
+        edgecount += node_adj.size();
+    }
+    edgecount /= 2;
+
+    ofstream outputFile("tmpgraph.graph");
+    if (outputFile.is_open()) {
+        outputFile << N << " " << edgecount << " 0\n";
+        for(auto node_adj : adj) {
+            for(auto neighbor : node_adj) {
+                outputFile << neighbor + 1 << " ";
+            }
+            outputFile << "\n";
+        }
+        outputFile.close();
+    }
+    else { 
+        cout << "Unable to open file";
+        exit(1);
+    }
+
+    std::ostringstream oss;
+    oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast > /dev/null";
+    // oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1";
+    std::string command = oss.str();
+    std::cout << command << std::endl;
+    int system_succesfull = system(command.c_str());
+    if(system_succesfull != 0) {
+        cout << "Command unsuccessful" << std::endl;
+        exit(1);
+    }
+
+    std::string line;
+    std::ifstream inputfile("./tmppartition");
+    if (!inputfile) {
+            std::cerr << "Error opening file" << std::endl;
+            exit(1);
+    }
+    for(int node  = 0; node < N; ++node) {
+        std::getline(inputfile, line);
+            if (line[0] == '%') { //Comment
+                    node--;
+                    continue;
+            }
+            partitions[node] = atol(line.c_str());
+    }
+
+    inputfile.close();
+
+    for(NodeID node = 0; node < N; ++node) {
+        partition_nodes[partitions[node]].push_back(node);
+    }
+}
+
+
+void parallel_reductions::reduce_graph()
+{
+    partition_graph();
     double begin, end, elapsed_secs;
 #ifndef NO_PREPROCESSING
     begin = omp_get_wtime();

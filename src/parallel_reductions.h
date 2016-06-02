@@ -137,6 +137,7 @@ public:
     size_t compute_alternative_maximal_is_size();
     size_t number_of_nodes_remaining() const;
     void force_into_independent_set(std::vector<NodeID> const &nodes);
+    void partition_graph();
 
 #if 0
 }
