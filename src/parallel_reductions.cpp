@@ -205,6 +205,20 @@ bool parallel_reductions::fold2Reduction() {
     return false;
 }
 
+bool parallel_reductions::fold2Reduction(int partition) {
+    bool changed = false;
+
+    for(int v : partition_nodes[partition]) {
+        if(x[v] < 0) {
+            bool changed_node = fold2Reduction(v, partition);
+            if(changed_node) {
+                changed = true;
+            }
+        }
+    }
+    return changed;
+}
+
 bool parallel_reductions::fold2Reduction(int v, int partition) {
 #ifndef NO_PREPROCESSING
     if(!nodes_with_2_neighborhood_in_block[v]) {
@@ -267,6 +281,20 @@ bool parallel_reductions::isolatedCliqueReduction() {
         }
     }
     return false;
+}
+
+bool parallel_reductions::isolatedCliqueReduction(int partition) {
+    bool changed = false;
+
+    for(int v : partition_nodes[partition]) {
+        if(x[v] < 0) {
+            bool changed_node = isolatedCliqueReduction(v, partition);
+            if(changed_node) {
+                changed = true;
+            }
+        }
+    }
+    return changed;
 }
 
 bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) {
@@ -463,26 +491,12 @@ void parallel_reductions::reduce_graph()
         break;
     }*/
 
-    std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
     #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
         for (;;) {
-            changed_per_partition[partition] = 0;
-            for (int v : partition_nodes[partition]) if (x[v] < 0) {
-                bool changed_node = fold2Reduction(v, partition);
-                if(changed_node) {
-                    changed_per_partition[partition] = 1;
-                    continue;
-                }
-                changed_node = isolatedCliqueReduction(v, partition);
-                if(changed_node) {
-                    changed_per_partition[partition] = 1;
-                    continue;
-                }
-            }
-            if(changed_per_partition[partition] != 1) {
-                break;
-            }
+            if(fold2Reduction(partition)) continue;
+            if(isolatedCliqueReduction(partition)) continue;
+            break;
         }
     }
 
