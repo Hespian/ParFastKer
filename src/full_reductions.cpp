@@ -15,12 +15,12 @@ full_reductions::full_reductions(std::vector<std::vector<int>> &_adj, MISConfig 
 void full_reductions::reduce_graph() {
 	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj, adj.size(), mis_config)));
 	parallel_reducers.back()->reduce_graph();	
-	std::cout << "Kernel size after first parallel run: " << parallel_reducers.back()->number_of_nodes_remaining() << std::endl;
-	std::vector<std::vector<int> > kernel_adj = parallel_reducers.back()->getKernel();
+	std::cout << "Kernel size after parallel run: " << parallel_reducers.back()->number_of_nodes_remaining() << std::endl;
+/*	std::vector<std::vector<int> > kernel_adj = parallel_reducers.back()->getKernel();
 	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(kernel_adj, kernel_adj.size(), mis_config)));
 	parallel_reducers.back()->reduce_graph();
-	std::cout << "Kernel size after second parallel run: " << parallel_reducers.back()->number_of_nodes_remaining() << std::endl;
-	kernel_adj = parallel_reducers.back()->getKernel();
+	std::cout << "Kernel size after second parallel run: " << parallel_reducers.back()->number_of_nodes_remaining() << std::endl;*/
+	std::vector<std::vector<int>> kernel_adj = parallel_reducers.back()->getKernel();
 	sequential_reducer = std::unique_ptr<branch_and_reduce_algorithm>(new branch_and_reduce_algorithm(kernel_adj, kernel_adj.size()));
 	double begin, end, elapsed_secs;
 	begin = omp_get_wtime();
