@@ -394,11 +394,12 @@ void parallel_reductions::partition_graph() {
     }
 
     std::ostringstream oss;
-    oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast > /dev/null";
-    // oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1";
+    // oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast > /dev/null";
+    oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1 --output_filename=tmppartition";
     std::string command = oss.str();
     std::cout << command << std::endl;
     int system_succesfull = system(command.c_str());
+    system("rm tmpgraph.graph");
     if(system_succesfull != 0) {
         cout << "Command unsuccessful" << std::endl;
         exit(1);
@@ -420,6 +421,7 @@ void parallel_reductions::partition_graph() {
     }
 
     inputfile.close();
+    system("rm tmppartition");
 
     for(NodeID node = 0; node < N; ++node) {
         partition_nodes[partitions[node]].push_back(node);
