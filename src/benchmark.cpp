@@ -39,6 +39,7 @@ int main(int argn, char **argv) {
     
     // Print setup information
     mis_log::instance()->print_graph();
+    mis_log::instance()->print_config();
 
     // initialize full reducer
     std::vector<std::vector<int>> adj_for_parallel_aglorithm(G.number_of_nodes());

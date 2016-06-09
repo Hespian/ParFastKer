@@ -39,6 +39,13 @@ public:
 	int    n;
     int    N;
 
+    /* Timings for experiments */
+    double begin;
+    std::vector<double> isolated_clique_start_times;
+    std::vector<double> vertex_fold_start_times;
+    std::vector<std::vector<double>> isolated_clique_times;
+    std::vector<std::vector<double>> vertex_fold_times;
+
 
     MISConfig &mis_config;
 
