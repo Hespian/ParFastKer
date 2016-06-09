@@ -77,52 +77,15 @@ class configuration_mis {
 };
 
 inline void configuration_mis::standard( MISConfig & mis_config ) {
-    // Basic 
-    mis_config.population_size                        = 50;
-    mis_config.repetitions                            = 50;
-    mis_config.time_limit                             = 1000.0;
     // KaHIP
     mis_config.kahip_mode                             = FAST;
     // Randomization
     mis_config.seed                                   = 0;
-    mis_config.diversify                              = true;
     mis_config.imbalance                              = 0.03;
-    mis_config.randomize_imbalance                    = true;
-    // Selection
-    mis_config.enable_tournament_selection            = true;
-    mis_config.tournament_size                        = 2;
-    // Mutation
-    mis_config.flip_coin                              = 1;
-    // Combination
-    mis_config.use_hopcroft                           = false;
-    mis_config.optimize_candidates                    = true;
-    // Multiway
-    mis_config.use_multiway_vc                        = false;
-    mis_config.multiway_blocks                        = 64;
-    // Thresholds
-    mis_config.insert_threshold                       = 150;
-    mis_config.pool_threshold                         = 250;
-    mis_config.pool_renewal_factor                    = 10.0;
-    // Separator pool
-    mis_config.number_of_separators                   = 10;
+    
     mis_config.number_of_partitions                   = 4;
-    mis_config.number_of_k_separators                 = 10;
-    mis_config.number_of_k_partitions                 = 10;
-    // Output
-    mis_config.print_repetition                       = true;
-    mis_config.print_population                       = false;
-    mis_config.console_log                            = false;
-    mis_config.check_sorted                           = true;
-    // ILS
-    mis_config.ils_iterations                         = 15000;
-    mis_config.force_k                                = 1;
-    mis_config.force_cand                             = 4;
     // Reductions
     mis_config.all_reductions                         = true;
-    // Convergence
-    mis_config.reduction_threshold                    = 350;
-    mis_config.remove_fraction                        = 0.10;
-    mis_config.extract_best_nodes                     = true;
 }
 
 inline void configuration_mis::social( MISConfig & mis_config ) {
@@ -132,15 +95,7 @@ inline void configuration_mis::social( MISConfig & mis_config ) {
 
 inline void configuration_mis::full_standard( MISConfig & mis_config ) {
     standard(mis_config);
-    mis_config.population_size                        = 250;
-    mis_config.time_limit                             = 36000.0;
-    mis_config.number_of_separators                   = 30;
     mis_config.number_of_partitions                   = 30;
-    mis_config.number_of_k_separators                 = 30;
-    mis_config.number_of_k_partitions                 = 30;
-    mis_config.flip_coin                              = 10;
-    mis_config.pool_threshold                         = 200;
-    mis_config.reduction_threshold                    = 1000;
 }
 
 inline void configuration_mis::full_social( MISConfig & mis_config ) {

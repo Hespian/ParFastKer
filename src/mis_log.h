@@ -77,7 +77,7 @@ class mis_log {
          *
          * @param mis_config Config for the logger.
          */
-        void print_round(MISConfig & mis_config);
+        // void print_round(MISConfig & mis_config);
 
         /**
          * Print information about the reduction step.
@@ -94,32 +94,32 @@ class mis_log {
          *
          * @param mis_config Config for the logger.
          */
-        void print_repetition(MISConfig & mis_config);
+        // void print_repetition(MISConfig & mis_config);
 
         /** 
          * Print the time needed to construct the separator pool.
          */
-        void print_separator();
+        // void print_separator();
 
         /**
          * Print banner for the partitioning phase.
          */
-        void print_pool_title();
+        // void print_pool_title();
 
         /**
          * Print banner for the evolution phase.
          */
-        void print_evolution_title();
+        // void print_evolution_title();
 
         /**
          * Print banner for the initialization phase.
          */
-        void print_init_title();
+        // void print_init_title();
 
         /**
          * Print the final results.
          */
-        void print_results();
+        // void print_results();
 
         /**
          * Print a title.
@@ -129,27 +129,27 @@ class mis_log {
         /**
          * Restart the timer for the total time including IO, etc.
          */
-        void restart_total_timer();
+        // void restart_total_timer();
 
         /**
          * Restart the timer for the evolutionary algorithm.
          */
-        void restart_evo_timer();
+        // void restart_evo_timer();
 
         /**
          * Get the timer for the evolutionary algorithm.
          */
-        double get_evo_timer();
+        // double get_evo_timer();
 
         /**
          * Restart the timer for a single operation.
          */
-        void restart_operator_timer();
+        // void restart_operator_timer();
 
         /**
          * Restart the timer for the separator pool.
          */
-        void restart_building_pool_timer();
+        // void restart_building_pool_timer();
 
         /**
          * Time taken for building the separator pool.
@@ -157,52 +157,52 @@ class mis_log {
          *
          * @return Time taken.
          */
-        double get_pool_building_time();
+        // double get_pool_building_time();
 
         /**
          * Time taken after building the separator pool.
          *
          * @return Time taken.
          */
-        double get_after_pool_time();
+        // double get_after_pool_time();
     
         /**
          * Increment the number of rounds by one.
          */
-        void inc_rounds();
+        // void inc_rounds();
 
         /**
          * Get current rount.
          * 
          * @return Current round of the evolutionary algorithm.
          */
-        unsigned int current_round() { return number_of_rounds; };
+        // unsigned int current_round() { return number_of_rounds; };
 
         /** 
          * Increment the number of repetitions by one.
          */
-        void inc_repetitions();
+        // void inc_repetitions();
 
         /**
          * Get current repetition.
          *
          * @return Current repetition of the evolutionary algorithm.
          */
-        unsigned int current_repetition() { return number_of_repetitions; };
+        // unsigned int current_repetition() { return number_of_repetitions; };
 
         /**
          * Set the current operator.
          *
          * @param operator_name Name of the operator.
          */
-        void set_operator(std::string operator_name);
+        // void set_operator(std::string operator_name);
 
         /**
          * Set the size of the result of the operator.
          *
          * @param result Solution size.
          */
-        void set_result_operator(unsigned int result);
+        // void set_result_operator(unsigned int result);
 
         /**
          * Update the size of the best solution.
@@ -210,19 +210,19 @@ class mis_log {
          * @param mis_config Config for the logger.
          * @param size Candidate to replace the best solution size.
          */
-        void set_best_size(MISConfig & mis_config, unsigned int size);
+        // void set_best_size(MISConfig & mis_config, unsigned int size);
 
         /**
          * Reset the size of the best solution.
          */
-        void reset_best_size();
+        // void reset_best_size();
 
         /**
          * Set the average solution size.
          *
          * @param avg_size Average solution size.
          */
-        void set_avg_solution_size(double avg_size);
+        // void set_avg_solution_size(double avg_size);
 
 
     private:

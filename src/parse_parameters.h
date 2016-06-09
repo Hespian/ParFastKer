@@ -47,22 +47,12 @@ int parse_parameters(int argn, char **argv,
     struct arg_str *user_conf           = arg_str0(NULL, "config", NULL, "Configuration to use. ([standard|social|full_standard|full_social]). Standard/social use different modes of the graph partitioning tool. Full configurations use more time consuming parameters.");
     
     struct arg_int *kahip_mode          = arg_int0(NULL, "kahip_mode", NULL, "KaHIP mode to use.");
-
-    // struct arg_int *repetitions         = arg_int0(NULL, "repetitions", NULL, "Number of repetitions per round.");
-
-    // struct arg_lit *use_multiway_ns     = arg_lit0(NULL, "use_multiway_ns", "Use the multiway combine operator with node separators.");
-    // struct arg_lit *use_multiway_vc     = arg_lit0(NULL, "use_multiway_vc", "Use the multiway combine operator with vertex covers.");
-    // struct arg_lit *use_hopcroft        = arg_lit0(NULL, "use_hopcroft", "Use Hopcroft-Karp to fix vertex cover candidates.");
+    struct arg_int *num_partitions      = arg_int0(NULL, "num_partitions", NULL, "Number of partitions to use.");
 
     struct arg_str *filename            = arg_strn(NULL, NULL, "FILE", 1, 1, "Path to graph file.");
     struct arg_str *output              = arg_str0(NULL, "output", NULL, "Path to store resulting independent set.");
-    struct arg_dbl *time_limit          = arg_dbl0(NULL, "time_limit", NULL, "Time limit in s. Default 1000s.");
     struct arg_lit *console_log         = arg_lit0(NULL, "console_log", "Stream the log into the console");
     struct arg_lit *disable_checks      = arg_lit0(NULL, "disable_checks", "Disable sortedness check during I/O.");
-
-    // Reduction
-    // struct arg_dbl *best_degree_frac    = arg_dbl0(NULL, "best_degree_frac", NULL, "Fraction of degree nodes to remove before reduction.");
-    struct arg_int *red_thres           = arg_int0(NULL, "red_thres", NULL, "Number of unsuccessful iterations before reduction.");
 
     struct arg_end *end                 = arg_end(100);
 
@@ -74,14 +64,8 @@ int parse_parameters(int argn, char **argv,
             user_seed, 
             user_conf, 
             kahip_mode,
-            // use_hopcroft,
-            // use_multiway_ns,
-            // use_multiway_vc,
-            // repetitions, 
-            red_thres,
-            time_limit, 
+            num_partitions,
             console_log,
-            // best_degree_frac,
             disable_checks,
             end
     };    
@@ -123,6 +107,10 @@ int parse_parameters(int argn, char **argv,
         mis_config.kahip_mode = kahip_mode->ival[0];
     }
 
+    if (num_partitions->count > 0) {
+        mis_config.number_of_partitions = num_partitions->ival[0];
+    }
+
     if (user_seed->count > 0) {
         mis_config.seed = user_seed->ival[0];
     }
@@ -142,14 +130,6 @@ int parse_parameters(int argn, char **argv,
     // if (repetitions->count > 0) {
     //     mis_config.repetitions = repetitions->ival[0];
     // }
-
-    if (red_thres->count > 0) {
-        mis_config.reduction_threshold = red_thres->ival[0];
-    }
-
-    if (time_limit->count > 0) {
-        mis_config.time_limit = time_limit->dval[0];
-    }
 
     //if (best_degree_frac->count > 0) {
         //mis_config.remove_fraction = best_degree_frac->dval[0];

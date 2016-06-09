@@ -124,68 +124,26 @@ void mis_log::print_graph() {
 void mis_log::print_config() {
     filebuffer_string << "\t\tConfiguration"        << std::endl;
     filebuffer_string << "=========================================="                            << std::endl;
-    filebuffer_string << "Population size:\t\t"      << log_config.population_size               << std::endl; 
-    filebuffer_string << "Repetitions:\t\t\t"        << log_config.repetitions                   << std::endl; 
-    filebuffer_string << "Time limit:\t\t\t"         << log_config.time_limit                    << std::endl; 
-    filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
     filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
     filebuffer_string << "Base imbalance:\t\t\t"     << log_config.imbalance                     << std::endl;
-    filebuffer_string << "Random imbalance:\t\t"     << log_config.randomize_imbalance           << std::endl;
-    filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "Tournament size:\t\t"      << log_config.tournament_size               << std::endl; 
-    filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "Mutation rate:\t\t\t"          << log_config.flip_coin                     << std::endl; 
-    filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "Use Multiway-VC:\t\t"      << log_config.use_multiway_vc               << std::endl; 
-    filebuffer_string << "Multiway blocks:\t\t"      << log_config.multiway_blocks               << std::endl; 
     filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "Apply all reductions:\t\t" << log_config.all_reductions                << std::endl; 
-    filebuffer_string << "Reductions threshold:\t\t" << log_config.reduction_threshold           << std::endl;
-    filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "Insert threshold:\t\t"     << log_config.insert_threshold              << std::endl;
-    filebuffer_string << "Pool threshold:\t\t\t"     << log_config.pool_threshold                << std::endl;
-    filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "ILS iterations:\t\t\t"     << log_config.ils_iterations                << std::endl;
     filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "No. of partitions:\t\t"    << log_config.number_of_partitions          << std::endl;
-    filebuffer_string << "No. of separators:\t\t"    << log_config.number_of_separators          << std::endl; 
-    filebuffer_string << "No. of k-partitions:\t\t"  << log_config.number_of_k_partitions        << std::endl;
-    filebuffer_string << "No. of k-separators:\t\t"  << log_config.number_of_k_separators        << std::endl; 
     filebuffer_string << std::endl;
     
     std::cout << "\t\tConfiguration"        << std::endl;
     std::cout << "=========================================="                            << std::endl;
-    std::cout << "Population size:\t\t"      << log_config.population_size               << std::endl; 
-    std::cout << "Repetitions:\t\t\t"        << log_config.repetitions                   << std::endl; 
-    std::cout << "Time limit:\t\t\t"         << log_config.time_limit                    << std::endl; 
-    std::cout << "---"                       << std::endl;
     std::cout << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
     std::cout << "---"                       << std::endl;
     std::cout << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
     std::cout << "Base imbalance:\t\t\t"     << log_config.imbalance                     << std::endl;
-    std::cout << "Random imbalance:\t\t"     << log_config.randomize_imbalance           << std::endl;
     std::cout << "---"                       << std::endl;
-    std::cout << "Tournament size:\t\t"      << log_config.tournament_size               << std::endl; 
-    std::cout << "---"                       << std::endl;
-    std::cout << "Mutation rate:\t\t\t"          << log_config.flip_coin                     << std::endl; 
-    std::cout << "---"                       << std::endl;
-    std::cout << "Use Multiway-VC:\t\t"      << log_config.use_multiway_vc               << std::endl; 
-    std::cout << "Multiway blocks:\t\t"      << log_config.multiway_blocks               << std::endl; 
-    std::cout << "---"                       << std::endl;
-    std::cout << "Apply all reductions:\t\t" << log_config.all_reductions                << std::endl; 
-    std::cout << "Reductions threshold:\t\t" << log_config.reduction_threshold           << std::endl;
-    std::cout << "---"                       << std::endl;
-    std::cout << "Insert threshold:\t\t"     << log_config.insert_threshold              << std::endl;
-    std::cout << "Pool threshold:\t\t\t"     << log_config.pool_threshold                << std::endl;
-    std::cout << "---"                       << std::endl;
-    std::cout << "ILS iterations:\t\t\t"     << log_config.ils_iterations                << std::endl;
+    std::cout << "Apply all reductions:\t\t" << log_config.all_reductions                << std::endl;
     std::cout << "---"                       << std::endl;
     std::cout << "No. of partitions:\t\t"    << log_config.number_of_partitions          << std::endl;
-    std::cout << "No. of separators:\t\t"    << log_config.number_of_separators          << std::endl; 
-    std::cout << "No. of k-partitions:\t\t"  << log_config.number_of_k_partitions        << std::endl;
-    std::cout << "No. of k-separators:\t\t"  << log_config.number_of_k_separators        << std::endl; 
     std::cout << std::endl;
 }
 
@@ -203,7 +161,7 @@ void mis_log::print_reduction(MISConfig & mis_config, unsigned int extracted_nod
     }
 }
 
-void mis_log::print_round(MISConfig & mis_config) {
+/*void mis_log::print_round(MISConfig & mis_config) {
     filebuffer_string << std::endl;
     filebuffer_string << "Round:\t\t\t\t"         << number_of_rounds                         << std::endl;
     filebuffer_string << "Best solution:\t\t\t"     << best_solution_size                       << std::endl; 
@@ -461,3 +419,4 @@ void mis_log::set_best_size(MISConfig & mis_config, unsigned int size) {
     }
 }
 
+*/

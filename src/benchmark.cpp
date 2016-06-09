@@ -19,7 +19,6 @@
 #include <memory>
 
 int main(int argn, char **argv) {
-    mis_log::instance()->restart_total_timer();
     mis_log::instance()->print_title();
     
     MISConfig mis_config;
