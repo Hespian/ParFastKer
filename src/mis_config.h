@@ -30,6 +30,8 @@
 struct MISConfig {
     // Name of the graph file.
     std::string graph_filename;
+    // Which partitioner to use
+    std::string partitioner;
     // Name of the output file.
     std::string output_filename;
     // Seed for the RNG.

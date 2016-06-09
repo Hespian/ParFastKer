@@ -78,11 +78,12 @@ class configuration_mis {
 
 inline void configuration_mis::standard( MISConfig & mis_config ) {
     // KaHIP
+    mis_config.partitioner                            = "kahip";
     mis_config.kahip_mode                             = FAST;
     // Randomization
     mis_config.seed                                   = 0;
     mis_config.imbalance                              = 0.03;
-    
+
     mis_config.number_of_partitions                   = 4;
     // Reductions
     mis_config.all_reductions                         = true;

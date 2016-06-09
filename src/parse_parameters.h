@@ -46,6 +46,7 @@ int parse_parameters(int argn, char **argv,
     struct arg_int *user_seed           = arg_int0(NULL, "seed", NULL, "Seed to use for the PRNG.");
     struct arg_str *user_conf           = arg_str0(NULL, "config", NULL, "Configuration to use. ([standard|social|full_standard|full_social]). Standard/social use different modes of the graph partitioning tool. Full configurations use more time consuming parameters.");
     
+    struct arg_str *partitioner         = arg_str0(NULL, "partitioner", NULL, "Partitioner to use. ([kahip, parallel_kahip, lpa]).");
     struct arg_int *kahip_mode          = arg_int0(NULL, "kahip_mode", NULL, "KaHIP mode to use.");
     struct arg_int *num_partitions      = arg_int0(NULL, "num_partitions", NULL, "Number of partitions to use.");
 
@@ -63,6 +64,7 @@ int parse_parameters(int argn, char **argv,
             output,
             user_seed, 
             user_conf, 
+            partitioner,
             kahip_mode,
             num_partitions,
             console_log,
@@ -97,6 +99,12 @@ int parse_parameters(int argn, char **argv,
         else if (strcmp(user_conf->sval[0], "social") == 0) cfg.social(mis_config);
         else if (strcmp(user_conf->sval[0], "full_standard") == 0) cfg.full_standard(mis_config);
         else if (strcmp(user_conf->sval[0], "full_social") == 0) cfg.full_social(mis_config);
+    }
+
+    if (partitioner->count > 0) {
+        if (strcmp(partitioner->sval[0], "kahip") == 0) mis_config.partitioner = "kahip";
+        else if (strcmp(partitioner->sval[0], "parallel_kahip") == 0) mis_config.partitioner = "parallel_kahip";
+        else if (strcmp(partitioner->sval[0], "lpa") == 0) mis_config.partitioner = "lpa";
     }
 
     if (filename->count > 0) {

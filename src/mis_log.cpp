@@ -124,6 +124,7 @@ void mis_log::print_graph() {
 void mis_log::print_config() {
     filebuffer_string << "\t\tConfiguration"        << std::endl;
     filebuffer_string << "=========================================="                            << std::endl;
+    filebuffer_string << "Partitioner:\t\t\t"        << log_config.partitioner                   << std::endl;
     filebuffer_string << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
     filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
@@ -136,6 +137,7 @@ void mis_log::print_config() {
     
     std::cout << "\t\tConfiguration"        << std::endl;
     std::cout << "=========================================="                            << std::endl;
+    std::cout << "Partitioner:\t\t\t"        << log_config.partitioner                   << std::endl;
     std::cout << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
     std::cout << "---"                       << std::endl;
     std::cout << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 

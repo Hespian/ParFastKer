@@ -352,79 +352,88 @@ void parallel_reductions::PrintState() const
 }
 
 void parallel_reductions::partition_graph() {
-    /*std::vector<int> xadj;
-    std::vector<int> adjncy;
-    for(auto node_adj_list : adj) {
+    if (mis_config.partitioner == "kahip") {
+        std::vector<int> xadj;
+        std::vector<int> adjncy;
+        for(auto node_adj_list : adj) {
+            xadj.push_back(adjncy.size());
+            for(auto neighbor : node_adj_list) {
+                adjncy.push_back(neighbor);
+            }
+        }
         xadj.push_back(adjncy.size());
-        for(auto neighbor : node_adj_list) {
-            adjncy.push_back(neighbor);
+        int edgecut = 0;
+        int number_of_partitions = (int)mis_config.number_of_partitions;
+        double imbalance = mis_config.imbalance;
+        kaffpa(&n, NULL, xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, rand(), mis_config.kahip_mode, &edgecut, partitions.data());
+        std::cout << "Edgecut: " << edgecut << std::endl;
+        for(NodeID node = 0; node < N; ++node) {
+            partition_nodes[partitions[node]].push_back(node);
         }
-    }
-    xadj.push_back(adjncy.size());
-    int edgecut = 0;
-    int number_of_partitions = (int)mis_config.number_of_partitions;
-    double imbalance = mis_config.imbalance;
-    kaffpa(&n, NULL, xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, rand(), mis_config.kahip_mode, &edgecut, partitions.data());
-    std::cout << "Edgecut: " << edgecut << std::endl;
-    for(NodeID node = 0; node < N; ++node) {
-        partition_nodes[partitions[node]].push_back(node);
-    }
-*/
+    } else {
 
-    int edgecount = 0;
-    for(auto node_adj : adj) {
-        edgecount += node_adj.size();
-    }
-    edgecount /= 2;
 
-    ofstream outputFile("tmpgraph.graph");
-    if (outputFile.is_open()) {
-        outputFile << N << " " << edgecount << " 0\n";
+        int edgecount = 0;
         for(auto node_adj : adj) {
-            for(auto neighbor : node_adj) {
-                outputFile << neighbor + 1 << " ";
-            }
-            outputFile << "\n";
+            edgecount += node_adj.size();
         }
-        outputFile.close();
-    }
-    else { 
-        cout << "Unable to open file";
-        exit(1);
-    }
+        edgecount /= 2;
 
-    std::ostringstream oss;
-    // oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast > /dev/null";
-    oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1 --output_filename=tmppartition";
-    std::string command = oss.str();
-    std::cout << command << std::endl;
-    int system_succesfull = system(command.c_str());
-    system("rm tmpgraph.graph");
-    if(system_succesfull != 0) {
-        cout << "Command unsuccessful" << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-    std::ifstream inputfile("./tmppartition");
-    if (!inputfile) {
-            std::cerr << "Error opening file" << std::endl;
-            exit(1);
-    }
-    for(int node  = 0; node < N; ++node) {
-        std::getline(inputfile, line);
-            if (line[0] == '%') { //Comment
-                    node--;
-                    continue;
+        ofstream outputFile("tmpgraph.graph");
+        if (outputFile.is_open()) {
+            outputFile << N << " " << edgecount << " 0\n";
+            for(auto node_adj : adj) {
+                for(auto neighbor : node_adj) {
+                    outputFile << neighbor + 1 << " ";
+                }
+                outputFile << "\n";
             }
-            partitions[node] = atol(line.c_str());
-    }
+            outputFile.close();
+        }
+        else { 
+            cout << "Unable to open file";
+            exit(1);
+        }
 
-    inputfile.close();
-    system("rm tmppartition");
+        std::ostringstream oss;
+        if (mis_config.partitioner == "parallel_kahip")
+            oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast > /dev/null";
+        else if (mis_config.partitioner == "lpa")
+            oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1 --output_filename=tmppartition > /dev/null";
+        else {
+            cout << "Unknown partitioner" << std::endl;
+            exit(1);
+        }
+        std::string command = oss.str();
+        std::cout << command << std::endl;
+        int system_succesfull = system(command.c_str());
+        system("rm tmpgraph.graph");
+        if(system_succesfull != 0) {
+            cout << "Command unsuccessful" << std::endl;
+            exit(1);
+        }
 
-    for(NodeID node = 0; node < N; ++node) {
-        partition_nodes[partitions[node]].push_back(node);
+        std::string line;
+        std::ifstream inputfile("./tmppartition");
+        if (!inputfile) {
+                std::cerr << "Error opening file" << std::endl;
+                exit(1);
+        }
+        for(int node  = 0; node < N; ++node) {
+            std::getline(inputfile, line);
+                if (line[0] == '%') { //Comment
+                        node--;
+                        continue;
+                }
+                partitions[node] = atol(line.c_str());
+        }
+
+        inputfile.close();
+        system("rm tmppartition");
+
+        for(NodeID node = 0; node < N; ++node) {
+            partition_nodes[partitions[node]].push_back(node);
+        }
     }
 }
 
