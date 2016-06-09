@@ -422,9 +422,9 @@ void parallel_reductions::partition_graph() {
 
         std::ostringstream oss;
         if (mis_config.partitioner == "parallel_kahip")
-            oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast > /dev/null";
+            oss << "mpirun -n " << mis_config.number_of_partitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << mis_config.number_of_partitions << " --preconfiguration=ultrafast >> partition_output";
         else if (mis_config.partitioner == "lpa")
-            oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1 --output_filename=tmppartition > /dev/null";
+            oss << "../../KaHIPLPkway/deploy/label_propagation --k " << mis_config.number_of_partitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1 --output_filename=tmppartition >> partition_output";
         else {
             cout << "Unknown partitioner" << std::endl;
             exit(1);
