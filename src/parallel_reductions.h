@@ -8,6 +8,7 @@
 
 #include "definitions.h"
 #include "data_structure/graph_access.h"
+#include "data_structures/array_set.h"
 #include "timer.h"
 
 // system includes
@@ -41,8 +42,6 @@ public:
 
     /* Timings for experiments */
     double begin;
-    std::vector<double> isolated_clique_start_times;
-    std::vector<double> vertex_fold_start_times;
     std::vector<std::vector<double>> isolated_clique_times;
     std::vector<std::vector<double>> vertex_fold_times;
 
@@ -87,6 +86,8 @@ public:
 	std::vector<std::vector<int>> level;
 
 	std::vector<std::vector<int>> modTmp;
+
+	std::vector<array_set> remaining_nodes;
 
 	std::vector<std::vector<std::shared_ptr<parallel_modified>>> modifieds;
 	std::vector<int> modifiedN;

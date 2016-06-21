@@ -86,6 +86,10 @@ parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N
         used.push_back(fast_set(n * 2));
     }
 
+    for(int i = 0; i < mis_config.number_of_partitions; ++i) {
+        remaining_nodes.push_back(array_set(N));
+    }
+
     vertex_fold_times.resize(mis_config.number_of_partitions);
     isolated_clique_times.resize(mis_config.number_of_partitions);
 }
@@ -213,7 +217,6 @@ bool parallel_reductions::fold2Reduction(int partition) {
             bool changed_node = fold2Reduction(v, partition);
             if(changed_node) {
                 changed = true;
-                vertex_fold_times[partition].push_back(omp_get_wtime() - begin);
             }
         }
     }
@@ -250,12 +253,20 @@ bool parallel_reductions::fold2Reduction(int v, int partition) {
     }
 #endif
     for (int u : adj[tmp[0]]) if (u == tmp[1]) {
-        set(v, 0);
         return false;
     }
     {
     vector<int> copyOfTmp(tmp.begin(), tmp.begin() + 2);
+    remaining_nodes[partition].remove(copyOfTmp[1]);
+    for(int u : adj[copyOfTmp[1]]) {
+        if(x[u] < 0) {
+            remaining_nodes[partition].insert(u);
+        }
+    }
+    remaining_nodes[partition].remove(v);
+    remaining_nodes[partition].insert(copyOfTmp[0]);
     compute_fold(vector<int>{v}, copyOfTmp, partition);
+    vertex_fold_times[partition].push_back(omp_get_wtime() - begin);
     return true;
     }
 }
@@ -286,7 +297,6 @@ bool parallel_reductions::isolatedCliqueReduction(int partition) {
         if(x[v] < 0) {
             bool changed_node = isolatedCliqueReduction(v, partition);
             if(changed_node) {
-                isolated_clique_times[partition].push_back(omp_get_wtime() - begin);
                 changed = true;
             }
         }
@@ -323,7 +333,21 @@ bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) 
             }
         }
     }
+    for (int neighbor : adj[vertex]) {
+        if(x[neighbor] < 0) {
+            for (int nNeighbor : adj[neighbor]) {
+                if(x[nNeighbor] < 0) {
+                    remaining_nodes[partition].insert(nNeighbor);
+                }
+            }
+        }
+    }
+    for (int neighbor : adj[vertex]) {
+        remaining_nodes[partition].remove(neighbor);
+    }
+    remaining_nodes[partition].remove(vertex);
     set(vertex, 0);
+    isolated_clique_times[partition].push_back(omp_get_wtime() - begin);
     return true;
 }
 
@@ -482,22 +506,24 @@ void parallel_reductions::reduce_graph()
     std::cout << numberNodesThatCouldFold << " of " << N << " nodes are considered for vertex folding (" << numberNodesThatCouldFold * 100/ (1.0 * N) << "%)" << std::endl;
 #endif
     begin = omp_get_wtime();
-    for (;;) {
-        vertex_fold_start_times.push_back(omp_get_wtime() - begin);
-        if (REDUCTION >= 1 && fold2Reduction()) continue;
-        isolated_clique_start_times.push_back(omp_get_wtime() - begin);
-        if (REDUCTION >= 1 && isolatedCliqueReduction()) continue;
-        break;
+
+    #pragma omp parallel for
+    for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
+        for(auto node : partition_nodes[partition]) {
+            remaining_nodes[partition].insert(node);
+        }
     }
 
-    /*#pragma omp parallel for
+    #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
-        for (;;) {
-            if(fold2Reduction(partition)) continue;
-            if(isolatedCliqueReduction(partition)) continue;
-            break;
+        while (!remaining_nodes[partition].empty()) {
+            NodeID node = *(remaining_nodes[partition].begin());
+            remaining_nodes[partition].remove(node);
+
+            bool reduced = isolatedCliqueReduction(node, partition);
+            if(!reduced) fold2Reduction(node, partition);
         }
-    }*/
+    }
 
     end = omp_get_wtime();
     elapsed_secs = double(end - begin);
@@ -523,18 +549,6 @@ void parallel_reductions::reduce_graph()
     }
     std::cout << "Vertex fold times: ";
     for(double time : vertex_fold_times_global) {
-        std::cout << time << ", ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "Isolated clique start times: ";
-    for(double time : isolated_clique_start_times) {
-        std::cout << time << ", ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "Vertex fold start times: ";
-    for(double time : vertex_fold_start_times) {
         std::cout << time << ", ";
     }
     std::cout << std::endl;
