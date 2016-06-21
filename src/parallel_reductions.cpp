@@ -479,7 +479,7 @@ void parallel_reductions::reduce_graph()
             numberNodesThatCouldFold++;
         }
     }
-    std::cout << numberNodesThatCouldFold << " of " << N << " nodes are considered for vertex folding (" << numberNodesThatCouldFold * 100/ (1.0 * N) << "%)" << std::endl;
+    std::cout << numberNodesThatCouldFold << " of " << N << " nodes are considered for vertex folding (" << ((double) numberNodesThatCouldFold * 100) / ((double) N) << "%)" << std::endl;
 #endif
     begin = omp_get_wtime();
     for (;;) {
