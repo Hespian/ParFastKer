@@ -42,8 +42,8 @@ public:
 
     /* Timings for experiments */
     double begin;
-    std::vector<std::vector<double>> isolated_clique_times;
-    std::vector<std::vector<double>> vertex_fold_times;
+    std::vector<int> num_isolated_cluque_reductions;
+    std::vector<int> num_vertex_fold_reductions;
 
 
     MISConfig &mis_config;

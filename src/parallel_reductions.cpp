@@ -90,8 +90,8 @@ parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N
         remaining_nodes.push_back(array_set(N));
     }
 
-    vertex_fold_times.resize(mis_config.number_of_partitions);
-    isolated_clique_times.resize(mis_config.number_of_partitions);
+    num_isolated_cluque_reductions = std::vector<int>(mis_config.number_of_partitions, 0);
+    num_vertex_fold_reductions = std::vector<int>(mis_config.number_of_partitions, 0);
 }
 
 #ifndef NO_PREPROCESSING
@@ -266,7 +266,7 @@ bool parallel_reductions::fold2Reduction(int v, int partition) {
     remaining_nodes[partition].remove(v);
     remaining_nodes[partition].insert(copyOfTmp[0]);
     compute_fold(vector<int>{v}, copyOfTmp, partition);
-    vertex_fold_times[partition].push_back(omp_get_wtime() - begin);
+    num_vertex_fold_reductions[partition]++;
     return true;
     }
 }
@@ -347,7 +347,7 @@ bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) 
     }
     remaining_nodes[partition].remove(vertex);
     set(vertex, 0);
-    isolated_clique_times[partition].push_back(omp_get_wtime() - begin);
+    num_isolated_cluque_reductions[partition]++;
     return true;
 }
 
@@ -528,30 +528,10 @@ void parallel_reductions::reduce_graph()
     end = omp_get_wtime();
     elapsed_secs = double(end - begin);
     cout << "Parallel took " << elapsed_secs << " seconds" << endl;
-    std::vector<double> isolated_clique_times_global = std::vector<double>(isolated_clique_times[0]);
-    std::vector<double> temp;
-    for(int partition = 1; partition < mis_config.number_of_partitions; ++partition) {
-        temp = std::vector<double>(isolated_clique_times_global.size() + isolated_clique_times[partition].size());
-        std::merge(isolated_clique_times_global.begin(), isolated_clique_times_global.end(), isolated_clique_times[partition].begin(), isolated_clique_times[partition].end(), temp.begin());
-        isolated_clique_times_global.swap(temp);
-    }
-    std::cout << "Isolated clique times: ";
-    for(double time : isolated_clique_times_global) {
-        std::cout << time << ", ";
-    }
-    std::cout << std::endl;
 
-    std::vector<double> vertex_fold_times_global = std::vector<double>(vertex_fold_times[0]);
-    for(int partition = 1; partition < mis_config.number_of_partitions; ++partition) {
-        temp = std::vector<double>(vertex_fold_times_global.size() + vertex_fold_times[partition].size());
-        std::merge(vertex_fold_times_global.begin(), vertex_fold_times_global.end(), vertex_fold_times[partition].begin(), vertex_fold_times[partition].end(), temp.begin());
-        vertex_fold_times_global.swap(temp);
-    }
-    std::cout << "Vertex fold times: ";
-    for(double time : vertex_fold_times_global) {
-        std::cout << time << ", ";
-    }
-    std::cout << std::endl;
+    std::cout << "Number of isolated clique reductions: " << std::accumulate(num_isolated_cluque_reductions.begin(), num_isolated_cluque_reductions.end(), 0) << std::endl;
+
+    std::cout << "Number of vertex fold reductions: " << std::accumulate(num_vertex_fold_reductions.begin(), num_vertex_fold_reductions.end(), 0) << std::endl;
 
     size_t low_degree_count(0);
     for (int v = 0; v < n; v++) if (x[v] < 0) {
