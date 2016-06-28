@@ -257,15 +257,15 @@ bool parallel_reductions::fold2Reduction(int v, int partition) {
     }
     {
     vector<int> copyOfTmp(tmp.begin(), tmp.begin() + 2);
-    remaining_nodes[partition].remove(copyOfTmp[1]);
-    for(int u : adj[copyOfTmp[1]]) {
+    remaining_nodes[partition].insert(copyOfTmp[0]);
+    compute_fold(vector<int>{v}, copyOfTmp, partition);
+    for(int u : adj[copyOfTmp[0]]) {
         if(x[u] < 0) {
             remaining_nodes[partition].insert(u);
         }
     }
+    remaining_nodes[partition].remove(copyOfTmp[1]);
     remaining_nodes[partition].remove(v);
-    remaining_nodes[partition].insert(copyOfTmp[0]);
-    compute_fold(vector<int>{v}, copyOfTmp, partition);
     num_vertex_fold_reductions[partition]++;
     return true;
     }
@@ -336,7 +336,7 @@ bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) 
     for (int neighbor : adj[vertex]) {
         if(x[neighbor] < 0) {
             for (int nNeighbor : adj[neighbor]) {
-                if(x[nNeighbor] < 0) {
+                if(x[nNeighbor] < 0 && partitions[nNeighbor] == partition) {
                     remaining_nodes[partition].insert(nNeighbor);
                 }
             }
