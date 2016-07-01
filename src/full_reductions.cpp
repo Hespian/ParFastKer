@@ -13,9 +13,9 @@ full_reductions::full_reductions(std::vector<std::vector<int>> &_adj, MISConfig 
 }
 
 void full_reductions::reduce_graph() {
-	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj, adj.size(), mis_config)));
-	parallel_reducers.back()->reduce_graph();	
-	std::cout << "Kernel size after parallel run: " << parallel_reducers.back()->number_of_nodes_remaining() << std::endl;
+	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj)));
+	parallel_reducers.back()->reduce_graph();
+	std::cout << "Kernel size after parallel run: " << parallel_reducers.back()->size() << std::endl;
 /*	std::vector<std::vector<int> > kernel_adj = parallel_reducers.back()->getKernel();
 	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(kernel_adj, kernel_adj.size(), mis_config)));
 	parallel_reducers.back()->reduce_graph();
@@ -48,7 +48,6 @@ void full_reductions::applyKernelSolution(std::vector<int> kernel_solution) {
 	std::vector<int> *tmp_kernel_solution = &(sequential_reducer->x);
 	for(int i = parallel_reducers.size() - 1; i >= 0; --i) {
 		parallel_reducers[i]->applyKernelSolution(*tmp_kernel_solution);
-		parallel_reducers[i]->undoReductions();
 		tmp_kernel_solution = &(parallel_reducers[i]->x);
 	}
 }

@@ -17,7 +17,7 @@
 
 // local includes
 #include "parallel_modified.h"
-#include "parallel_reductions.h"
+#include "parallel_reductions_old.h"
 
 // system includes
 #include <vector>

@@ -93,6 +93,9 @@ int main(int argn, char **argv) {
                                 exit(1);
                             }
                     } endfor
+            } else if (parallel_solution[node] < 0) {
+                std::cout << "Incomplete Solution! Vertex " << node << " undefined!" << std::endl;
+                exit(1);
             }
     } endfor
     std::cout <<  "valid"  << std::endl; 
