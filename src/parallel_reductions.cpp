@@ -33,6 +33,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
             neighbors[u].Insert(vertex);
         }
     }
+    independent_set.resize(m_AdjacencyArray.size());
 }
 
 parallel_reductions::~parallel_reductions()
@@ -75,10 +76,9 @@ std::vector<std::vector<int>> parallel_reductions::getKernel() {
 }
 
 void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
-    x.resize(m_AdjacencyArray.size());
     for(int node = 0; node < m_AdjacencyArray.size(); ++node) {
         if(inGraph.Contains(node)) {
-            x[node] = kernel_solution[graph_to_kernel_map[node]];
+            independent_set[node] = kernel_solution[graph_to_kernel_map[node]];
         }
     }
     ApplyKernelSolutionToReductions(Reductions);
@@ -115,15 +115,16 @@ bool parallel_reductions::RemoveIsolatedClique(int const vertex, vector<Reductio
         }
     }
     if (superSet) {
-        Reduction reduction(ISOLATED_VERTEX);
-        reduction.SetVertex(vertex);
-
+        // Reduction reduction(ISOLATED_VERTEX);
+        // reduction.SetVertex(vertex);
+        independent_set[vertex] = 0;
         for (int const neighbor : neighbors[vertex]) {
             inGraph.Remove(neighbor);
             remaining.Remove(neighbor);
-            reduction.AddNeighbor(neighbor);
-            reduction.AddRemovedEdge(vertex,   neighbor);
-            reduction.AddRemovedEdge(neighbor, vertex);
+            independent_set[neighbor] = 1;
+            // reduction.AddNeighbor(neighbor);
+            // reduction.AddRemovedEdge(vertex,   neighbor);
+            // reduction.AddRemovedEdge(neighbor, vertex);
         }
         inGraph.Remove(vertex);
 
@@ -135,15 +136,15 @@ bool parallel_reductions::RemoveIsolatedClique(int const vertex, vector<Reductio
 
                 if (nNeighbor != vertex) {
                     neighbors[nNeighbor].Remove(neighbor);
-                    reduction.AddRemovedEdge(nNeighbor, neighbor);
-                    reduction.AddRemovedEdge(neighbor, nNeighbor);
+                    // reduction.AddRemovedEdge(nNeighbor, neighbor);
+                    // reduction.AddRemovedEdge(neighbor, nNeighbor);
                 }
             }
             neighbors[neighbor].Clear();
         }
         neighbors[vertex].Clear();
 
-        vReductions.emplace_back(std::move(reduction));
+        // vReductions.emplace_back(std::move(reduction));
         
         // std::cout << "Isolated clique: " << vertex + 1 << std::endl;
         return true;
@@ -171,16 +172,16 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
     neighbors[vertex1].Remove(vertex);
     neighbors[vertex2].Remove(vertex);
 
-    reduction.AddRemovedEdge(vertex, vertex1);
-    reduction.AddRemovedEdge(vertex1, vertex);
-    reduction.AddRemovedEdge(vertex, vertex2);
-    reduction.AddRemovedEdge(vertex2, vertex);
+    // reduction.AddRemovedEdge(vertex, vertex1);
+    // reduction.AddRemovedEdge(vertex1, vertex);
+    // reduction.AddRemovedEdge(vertex, vertex2);
+    // reduction.AddRemovedEdge(vertex2, vertex);
 
     for (int const neighbor1 : neighbors[vertex1]) {
         if (neighbor1 == vertex) continue;
         neighbors[neighbor1].Remove(vertex1);
-        reduction.AddRemovedEdge(neighbor1, vertex1);
-        reduction.AddRemovedEdge(vertex1, neighbor1);
+        // reduction.AddRemovedEdge(neighbor1, vertex1);
+        // reduction.AddRemovedEdge(vertex1, neighbor1);
         neighbors[vertex].Insert(neighbor1);
         remaining.Insert(neighbor1);
     }
@@ -189,8 +190,8 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
     for (int const neighbor2 : neighbors[vertex2]) {
         if (neighbor2 == vertex) continue;
         neighbors[neighbor2].Remove(vertex2);
-        reduction.AddRemovedEdge(neighbor2, vertex2);
-        reduction.AddRemovedEdge(vertex2, neighbor2);
+        // reduction.AddRemovedEdge(neighbor2, vertex2);
+        // reduction.AddRemovedEdge(vertex2, neighbor2);
         neighbors[vertex].Insert(neighbor2);
         remaining.Insert(neighbor2);
     }
@@ -249,10 +250,10 @@ void parallel_reductions::UndoReductions(vector<Reduction> const &vReductions)
             case ISOLATED_VERTEX:
 
                 inGraph.Insert(reduction.GetVertex());
-                x[reduction.GetVertex()] = 0;
+                independent_set[reduction.GetVertex()] = 0;
                 for (int const neighbor : reduction.GetNeighbors()) {
                     inGraph.Insert(neighbor);
-                    x[neighbor] = 1;
+                    independent_set[neighbor] = 1;
                 }
                 for (pair<int,int> const &edge : reduction.GetRemovedEdges()) {
                     neighbors[edge.first].Insert(edge.second);
@@ -271,14 +272,14 @@ void parallel_reductions::UndoReductions(vector<Reduction> const &vReductions)
                 for (pair<int,int> const &edge : reduction.GetRemovedEdges()) {
                     neighbors[edge.first].Insert(edge.second);
                 }
-                if(x[reduction.GetVertex()] == 0) {
-                    x[reduction.GetNeighbors()[0]] = 0;
-                    x[reduction.GetNeighbors()[1]] = 0;
-                    x[reduction.GetVertex()] = 1;
+                if(independent_set[reduction.GetVertex()] == 0) {
+                    independent_set[reduction.GetNeighbors()[0]] = 0;
+                    independent_set[reduction.GetNeighbors()[1]] = 0;
+                    independent_set[reduction.GetVertex()] = 1;
                 } else {
-                    x[reduction.GetNeighbors()[0]] = 1;
-                    x[reduction.GetNeighbors()[1]] = 1;
-                    x[reduction.GetVertex()] = 0;
+                    independent_set[reduction.GetNeighbors()[0]] = 1;
+                    independent_set[reduction.GetNeighbors()[1]] = 1;
+                    independent_set[reduction.GetVertex()] = 0;
                 }
             break;
             default:
@@ -302,21 +303,21 @@ void parallel_reductions::ApplyKernelSolutionToReductions(vector<Reduction> cons
     for (size_t index = vReductions.size(); index > 0; index--) {
         Reduction const &reduction(vReductions[index-1]);
         switch(reduction.GetType()) {
-            case ISOLATED_VERTEX:
-                x[reduction.GetVertex()] = 0;
+            /*case ISOLATED_VERTEX:
+                independent_set[reduction.GetVertex()] = 0;
                 for (int const neighbor : reduction.GetNeighbors()) {
-                    x[neighbor] = 1;
+                    independent_set[neighbor] = 1;
                 }
-            break;
+            break;*/
             case FOLDED_VERTEX:
-                if(x[reduction.GetVertex()] == 0) {
-                    x[reduction.GetNeighbors()[0]] = 0;
-                    x[reduction.GetNeighbors()[1]] = 0;
-                    x[reduction.GetVertex()] = 1;
+                if(independent_set[reduction.GetVertex()] == 0) {
+                    independent_set[reduction.GetNeighbors()[0]] = 0;
+                    independent_set[reduction.GetNeighbors()[1]] = 0;
+                    independent_set[reduction.GetVertex()] = 1;
                 } else {
-                    x[reduction.GetNeighbors()[0]] = 1;
-                    x[reduction.GetNeighbors()[1]] = 1;
-                    x[reduction.GetVertex()] = 0;
+                    independent_set[reduction.GetNeighbors()[0]] = 1;
+                    independent_set[reduction.GetNeighbors()[1]] = 1;
+                    independent_set[reduction.GetVertex()] = 0;
                 }
             break;
             default:

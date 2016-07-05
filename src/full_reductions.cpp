@@ -48,10 +48,10 @@ void full_reductions::applyKernelSolution(std::vector<int> kernel_solution) {
 	std::vector<int> *tmp_kernel_solution = &(sequential_reducer->x);
 	for(int i = parallel_reducers.size() - 1; i >= 0; --i) {
 		parallel_reducers[i]->applyKernelSolution(*tmp_kernel_solution);
-		tmp_kernel_solution = &(parallel_reducers[i]->x);
+		tmp_kernel_solution = &(parallel_reducers[i]->independent_set);
 	}
 }
 
 std::vector<int> full_reductions::getSolution() {
-	return parallel_reducers.front()->x;
+	return parallel_reducers.front()->independent_set;
 }

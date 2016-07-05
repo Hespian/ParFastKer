@@ -28,7 +28,7 @@ public:
     void applyKernelSolution(std::vector<int> kernel_solution);
     void ApplyKernelSolutionToReductions(std::vector<Reduction> const &vReductions);
 
-    std::vector<int> x;
+    std::vector<int> independent_set;
 
     size_t size() const { return inGraph.Size(); }
 
