@@ -219,11 +219,13 @@ void parallel_reductions::ApplyReductions(vector<Reduction> &vReductions)
 #ifdef TIMERS
     clock_t startClock = clock();
 #endif // TIMERS
+    std::cout << "Filling remaining vertices set..." << std::endl;
         remaining.Clear();
         for (int const vertex : inGraph) {
             remaining.Insert(vertex);
         }
     int iterations(0);
+    std::cout << "Starting reductions..." << std::endl;
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());
         remaining.Remove(vertex);
@@ -232,7 +234,12 @@ void parallel_reductions::ApplyReductions(vector<Reduction> &vReductions)
             reduction = FoldVertex(vertex, vReductions);
         }
         iterations++;
+        if(iterations % 1000000 == 0) {
+            std::cout << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Current graph size: " << inGraph.Size() << std::endl;
+        }
     }
+    std::cout << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Current graph size: " << inGraph.Size() << std::endl;
+    std::cout << "Finished reductions!" << std::endl;
 #ifdef TIMERS
     clock_t endClock = clock();
     removeTimer += (endClock - startClock);
