@@ -22,7 +22,7 @@ private:
 	std::vector<std::vector<int>> &adj;
 	MISConfig &mis_config;
 	std::vector<std::unique_ptr<parallel_reductions>> parallel_reducers;
-	std::unique_ptr<branch_and_reduce_algorithm> sequential_reducer;
+	// std::unique_ptr<branch_and_reduce_algorithm> sequential_reducer;
 };
 
 
