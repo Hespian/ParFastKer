@@ -22,7 +22,7 @@
 // system includes
 #include <vector>
 
-parallel_modified::parallel_modified(int const _add, std::vector<int> &_removed, std::vector<int> &_vs, std::vector<std::vector<int>> &newAdj, parallel_reductions *_pAlg)
+parallel_modified::parallel_modified(int const _add, std::vector<int> &_removed, std::vector<int> &_vs, std::vector<std::vector<int>> &newAdj, parallel_reductions_old *_pAlg)
 : add(_add)
 , pAlg(_pAlg) 
 {
@@ -39,7 +39,7 @@ parallel_modified::parallel_modified(int const _add, std::vector<int> &_removed,
     }
 }
 
-parallel_modified::parallel_modified(std::vector<int> &_removed, std::vector<int> &_vs, parallel_reductions *_pAlg)
+parallel_modified::parallel_modified(std::vector<int> &_removed, std::vector<int> &_vs, parallel_reductions_old *_pAlg)
 : add(0)
 , pAlg(_pAlg)
 {

@@ -1,4 +1,4 @@
-#include "parallel_reductions.h"
+#include "parallel_reductions_old.h"
 // #include "mis_config.h"
 #include "fast_set.h"
 #include "parallel_modified.h"
@@ -27,14 +27,14 @@
 
 using namespace std;
 
-int  parallel_reductions::REDUCTION   = 3;
-int  parallel_reductions::LOWER_BOUND = 4;
-int  parallel_reductions::BRANCHING   = 2;
-bool parallel_reductions::outputLP    = false;
-long parallel_reductions::nBranchings = 0;
-int  parallel_reductions::debug       = 0;
+int  parallel_reductions_old::REDUCTION   = 3;
+int  parallel_reductions_old::LOWER_BOUND = 4;
+int  parallel_reductions_old::BRANCHING   = 2;
+bool parallel_reductions_old::outputLP    = false;
+long parallel_reductions_old::nBranchings = 0;
+int  parallel_reductions_old::debug       = 0;
 
-parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N, MISConfig &mis_config)
+parallel_reductions_old::parallel_reductions_old(vector<vector<int>> &_adj, int const _N, MISConfig &mis_config)
 : adj() 
 , n(_adj.size())
 , mis_config(mis_config)
@@ -95,7 +95,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> &_adj, int const _N
 }
 
 #ifndef NO_PREPROCESSING
-void parallel_reductions::compute_2_neighborhood() {
+void parallel_reductions_old::compute_2_neighborhood() {
     #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
         for(NodeID node : partition_nodes[partition]) {
@@ -113,14 +113,14 @@ void parallel_reductions::compute_2_neighborhood() {
 }
 #endif
 
-int parallel_reductions::deg(int v) {
+int parallel_reductions_old::deg(int v) {
     assert(x[v] < 0);
     int deg = 0;
     for (int u : adj[v]) if (x[u] < 0) deg++;
     return deg;
 }
 
-void parallel_reductions::set(int v, int a)
+void parallel_reductions_old::set(int v, int a)
 {
     assert(x[v] < 0);
     x[v] = a;
@@ -133,7 +133,7 @@ void parallel_reductions::set(int v, int a)
 
 // methods that modify the graph
 
-void parallel_reductions::compute_fold(vector<int> const &S, vector<int> const &NS, int partition) {
+void parallel_reductions_old::compute_fold(vector<int> const &S, vector<int> const &NS, int partition) {
     assert(NS.size() == S.size() + 1);
     vector<int> removed(S.size() * 2);
     for (unsigned int i = 0; i < S.size(); i++) removed[i] = S[i];
@@ -184,7 +184,7 @@ void parallel_reductions::compute_fold(vector<int> const &S, vector<int> const &
 ////    cout << __LINE__ << ", " << this << ", " << depth << ": Setting modifieds[" << modifiedN-1 << "]=" << modifieds[modifiedN-1] << endl << flush;
 }
 
-void parallel_reductions::reverse() {
+void parallel_reductions_old::reverse() {
     for (int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
         for (int i = modifiedN[partition] - 1; i >= 0; i--) {
                 modifieds[partition][i]->reverse(y);
@@ -192,7 +192,7 @@ void parallel_reductions::reverse() {
     }
 }
 
-bool parallel_reductions::fold2Reduction() {
+bool parallel_reductions_old::fold2Reduction() {
     std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
     #pragma omp parallel for
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
@@ -209,7 +209,7 @@ bool parallel_reductions::fold2Reduction() {
     return false;
 }
 
-bool parallel_reductions::fold2Reduction(int partition) {
+bool parallel_reductions_old::fold2Reduction(int partition) {
     bool changed = false;
 
     for(int v : partition_nodes[partition]) {
@@ -223,7 +223,7 @@ bool parallel_reductions::fold2Reduction(int partition) {
     return changed;
 }
 
-bool parallel_reductions::fold2Reduction(int v, int partition) {
+bool parallel_reductions_old::fold2Reduction(int v, int partition) {
 #ifndef NO_PREPROCESSING
     if(!nodes_with_2_neighborhood_in_block[v]) {
         return false;
@@ -271,7 +271,7 @@ bool parallel_reductions::fold2Reduction(int v, int partition) {
     }
 }
 
-bool parallel_reductions::isolatedCliqueReduction() {
+bool parallel_reductions_old::isolatedCliqueReduction() {
     std::vector<char> changed_per_partition(mis_config.number_of_partitions, 0);
 
     #pragma omp parallel for
@@ -290,7 +290,7 @@ bool parallel_reductions::isolatedCliqueReduction() {
     return false;
 }
 
-bool parallel_reductions::isolatedCliqueReduction(int partition) {
+bool parallel_reductions_old::isolatedCliqueReduction(int partition) {
     bool changed = false;
 
     for(int v : partition_nodes[partition]) {
@@ -304,7 +304,7 @@ bool parallel_reductions::isolatedCliqueReduction(int partition) {
     return changed;
 }
 
-bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) {
+bool parallel_reductions_old::isolatedCliqueReduction(NodeID vertex, int partition) {
     auto degreeVertex = deg(vertex);
     for (int neighbor : adj[vertex]) {
         if (partitions[neighbor] != partition) {
@@ -351,7 +351,7 @@ bool parallel_reductions::isolatedCliqueReduction(NodeID vertex, int partition) 
     return true;
 }
 
-std::string parallel_reductions::debugString() const {
+std::string parallel_reductions_old::debugString() const {
     stringstream ins;
 #ifdef PUT_TIME
     time_t rawtime;
@@ -376,7 +376,7 @@ std::string parallel_reductions::debugString() const {
 
 }
 
-void parallel_reductions::PrintState() const
+void parallel_reductions_old::PrintState() const
 {
     cout << "State(" << this << "):" << endl << flush;
     cout << "adj=" << endl << flush;
@@ -400,7 +400,7 @@ void parallel_reductions::PrintState() const
     cout << endl << flush;
 }
 
-void parallel_reductions::partition_graph() {
+void parallel_reductions_old::partition_graph() {
     if (mis_config.partitioner == "kahip") {
         std::vector<int> xadj;
         std::vector<int> adjncy;
@@ -487,7 +487,7 @@ void parallel_reductions::partition_graph() {
 }
 
 
-void parallel_reductions::reduce_graph()
+void parallel_reductions_old::reduce_graph()
 {
     partition_graph();
     double end, elapsed_secs;
@@ -542,7 +542,7 @@ void parallel_reductions::reduce_graph()
     cout << "There are " << low_degree_count << " degree 0 and 1 vertices left!" << endl << flush;
 }
 
-size_t parallel_reductions::get_current_is_size() const {
+size_t parallel_reductions_old::get_current_is_size() const {
 
     vector<int> x2(x);
 
@@ -562,7 +562,7 @@ size_t parallel_reductions::get_current_is_size() const {
     return current_is_size;
 }
 
-size_t parallel_reductions::get_current_is_size_with_folds() const {
+size_t parallel_reductions_old::get_current_is_size_with_folds() const {
 
     size_t folded_vertex_count(0);
     size_t current_is_size(0);
@@ -574,7 +574,7 @@ size_t parallel_reductions::get_current_is_size_with_folds() const {
     return current_is_size + folded_vertex_count/2;
 }
 
-void parallel_reductions::undoReductions() {
+void parallel_reductions_old::undoReductions() {
     for(int partition = 0; partition < mis_config.number_of_partitions; ++partition) {
         for (int i = modifiedN[partition] - 1; i >= 0; i--) {
             modifieds[partition][i]->reverse(x);
@@ -582,7 +582,7 @@ void parallel_reductions::undoReductions() {
     }
 }
 
-bool parallel_reductions::folded_vertices_exist() const {
+bool parallel_reductions_old::folded_vertices_exist() const {
 
     vector<int> x2(x);
 
@@ -599,7 +599,7 @@ bool parallel_reductions::folded_vertices_exist() const {
     return false;
 }
 
-vector<int> parallel_reductions::compute_maximal_is() {
+vector<int> parallel_reductions_old::compute_maximal_is() {
 
     int vertexToForceInIndependentSet(0);
     while (vertexToForceInIndependentSet != -1) {
@@ -637,7 +637,7 @@ vector<int> parallel_reductions::compute_maximal_is() {
     return x2;
 }
 
-size_t parallel_reductions::compute_alternative_maximal_is_size() {
+size_t parallel_reductions_old::compute_alternative_maximal_is_size() {
 
     int vertexToForceInIndependentSet(0);
     while (vertexToForceInIndependentSet != -1) {
@@ -667,7 +667,7 @@ size_t parallel_reductions::compute_alternative_maximal_is_size() {
     return sizeOfIS + numberOfFoldedVertices/2;
 }
 
-size_t parallel_reductions::number_of_nodes_remaining() const {
+size_t parallel_reductions_old::number_of_nodes_remaining() const {
 
     size_t node_count(0);
     for (int i : x) if (i == -1) node_count++;
@@ -675,7 +675,7 @@ size_t parallel_reductions::number_of_nodes_remaining() const {
     return node_count;
 }
 
-void parallel_reductions::force_into_independent_set(vector<NodeID> const &nodes) {
+void parallel_reductions_old::force_into_independent_set(vector<NodeID> const &nodes) {
 
     for (NodeID const node : nodes) {
         assert(x[node] == -1); // should not have been assigned yet.
@@ -687,7 +687,7 @@ void parallel_reductions::force_into_independent_set(vector<NodeID> const &nodes
     }
 }
 
-std::vector<std::vector<int>> parallel_reductions::getKernel() {
+std::vector<std::vector<int>> parallel_reductions_old::getKernel() {
     graph_to_kernel_map = std::vector<int> (N);
     int nodecount = 0;
     for (int node = 0; node < N; ++node) {
@@ -714,7 +714,7 @@ std::vector<std::vector<int>> parallel_reductions::getKernel() {
     return kernel_adj;
 }
 
-void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution) {
+void parallel_reductions_old::applyKernelSolution(std::vector<int> kernel_solution) {
     #pragma omp parallel for
     for(int node = 0; node < N; ++node) {
         if(x[node] < 0) {

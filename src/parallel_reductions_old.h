@@ -1,5 +1,5 @@
-#ifndef PARALLEL_REDUCTIONS_H
-#define PARALLEL_REDUCTIONS_H
+#ifndef PARALLEL_REDUCTIONS_OLD_H
+#define PARALLEL_REDUCTIONS_OLD_H
 
 // local includes
 #include "fast_set.h"
@@ -18,7 +18,7 @@
 #include <list>
 
 
-class parallel_reductions
+class parallel_reductions_old
 {
 friend class parallel_modified;
 friend class fold;
@@ -92,7 +92,7 @@ public:
 	std::vector<std::vector<std::shared_ptr<parallel_modified>>> modifieds;
 	std::vector<int> modifiedN;
 			
-	parallel_reductions(std::vector<std::vector<int>> &_adj, int const _N, MISConfig &mis_config);
+	parallel_reductions_old(std::vector<std::vector<int>> &_adj, int const _N, MISConfig &mis_config);
 
 	std::vector<std::vector<int>> getKernel();
 	void applyKernelSolution(std::vector<int> kernel_solution);
@@ -154,4 +154,4 @@ public:
 #endif // 0
 };
 
-#endif //PARALLEL_REDUCTIONS_H
+#endif //PARALLEL_REDUCTIONS_OLD_H
