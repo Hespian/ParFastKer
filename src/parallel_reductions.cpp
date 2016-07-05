@@ -25,6 +25,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , foldedVertexCount(0)
  , m_bAllowVertexFolds(true)
 {
+    std::cout << "Start constructor" << std::endl;
     for (size_t u=0; u < adjacencyArray.size(); ++u) {
         remaining.Insert(u);
         inGraph.Insert(u);
@@ -34,6 +35,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
         }
     }
     independent_set.resize(m_AdjacencyArray.size());
+    std::cout << "Finished constructor" << std::endl;
 }
 
 parallel_reductions::~parallel_reductions()

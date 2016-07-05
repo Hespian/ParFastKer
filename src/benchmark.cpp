@@ -42,6 +42,7 @@ int main(int argn, char **argv) {
     mis_log::instance()->print_config();
 
     // initialize full reducer
+    std::cout << "Creating graph" << std::endl;
     std::vector<std::vector<int>> adj_for_parallel_aglorithm(G.number_of_nodes());
 
     // Build adjacency vectors
@@ -52,6 +53,7 @@ int main(int argn, char **argv) {
             adj_for_parallel_aglorithm[node].push_back(neighbor);
         } endfor
     } endfor
+    std::cout << "Finished creating graph" << std::endl;
 
     std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, mis_config));
 
