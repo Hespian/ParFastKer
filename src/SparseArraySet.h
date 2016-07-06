@@ -29,7 +29,10 @@ public:
     {
         Resize(adjacencyArray[vertex].size());
         for (int const neighbor : adjacencyArray[vertex]) {
-            Insert(neighbor);
+            assert(!m_bRemoved); // not allowed to insert and remove when saving states
+            if (!m_States.empty()) m_bInserted = true;
+            m_iEnd++;
+            m_Elements[m_iEnd] = neighbor;
         }
     }
 

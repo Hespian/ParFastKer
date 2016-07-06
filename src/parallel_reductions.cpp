@@ -30,9 +30,9 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
         remaining.Insert(u);
         inGraph.Insert(u);
         neighbors[u].InitializeFromAdjacencyArray(m_AdjacencyArray, u);
-        for (int const vertex : m_AdjacencyArray[u]) {
+        /*for (int const vertex : m_AdjacencyArray[u]) {
             neighbors[u].Insert(vertex);
-        }
+        }*/
     }
     independent_set.resize(m_AdjacencyArray.size());
     std::cout << "Finished constructor" << std::endl;
