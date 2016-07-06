@@ -10,6 +10,8 @@
 #include <climits>
 #include <algorithm>
 
+#define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
+
 using namespace std;
 
 parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArray)
@@ -88,6 +90,9 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
 
 bool parallel_reductions::RemoveIsolatedClique(int const vertex, vector<Reduction> &vReductions)
 {
+    if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
+        return false;
+
     for (int const neighbor : neighbors[vertex]) {
         if (neighbors[neighbor].Size() < neighbors[vertex].Size()) {
             return false;
