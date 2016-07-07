@@ -27,7 +27,6 @@ add_definitions(-std=c++11)
 
 set(OpenMP_CXX_FLAGS "${OpenMP_CXX_FLAGS} -fopenmp")
 add_definitions(${OpenMP_CXX_FLAGS})
-add_definitions(${CMAKE_CXX_FLAGS_RELEASE})
 
 # Add the test executable
 set(TEST_SOURCES ${SOURCES})

@@ -5,12 +5,14 @@
 #include "ArraySet.h"
 #include "SparseArraySet.h"
 #include "Reduction.h"
+#include "SimpleSet.h"
 
 #include <vector>
 #include <map>
 #include <set>
 #include <utility>
 #include <ctime>
+#include <string>
 
 #define TIMERS
 
@@ -20,9 +22,9 @@ public:
     parallel_reductions(std::vector<std::vector<int>> const &adjacencyArray);
     ~parallel_reductions();
 
-    void reduce_graph();
+    void reduce_graph(int numPartitions, std::string partitioner);
 
-    void ApplyReductions(std::vector<Reduction> &vReductions);
+    void ApplyReductions(std::vector<int> vertices, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining);
     void UndoReductions(std::vector<Reduction> const &vReductions);
     std::vector<std::vector<int>> getKernel();
     void applyKernelSolution(std::vector<int> kernel_solution);
@@ -32,31 +34,29 @@ public:
 
     size_t size() const { return inGraph.Size(); }
 
-    ArraySet const& GetInGraph()  const { return inGraph;  }
     std::vector<SparseArraySet> const& Neighbors()  const { return neighbors;  }
-
-    size_t GetFoldedVertexCount() const { return foldedVertexCount; }
 
     void SetAllowVertexFolds(bool const allow) { m_bAllowVertexFolds = allow; }
 
 protected: // methods
-    bool RemoveIsolatedClique    (int const vertex, std::vector<Reduction> &vReductions);
-    bool FoldVertex(int const vertex, std::vector<Reduction> &vReductions);
+    bool RemoveIsolatedClique    (int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
+    bool FoldVertex(int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
+    void partitionGraph(int numPartitions, std::string partitioner);
+    void initReducableVertices(int numPartitions);
 
 protected: // members
     std::vector<int> graph_to_kernel_map;
     std::vector<int> kernel_solution;
-    std::vector<Reduction> Reductions;
+    std::vector<std::vector<Reduction>> ReductionsPerPartition;
     std::vector<std::vector<int>> const &m_AdjacencyArray;
     std::vector<SparseArraySet>     neighbors;
-    ArraySet inGraph;
-    ArraySet remaining;
-    std::vector<bool> vMarkedVertices;
+    SimpleSet inGraph;
+    SimpleSet reducableVertices;
+    std::vector<int> partitions;
+    std::vector<std::vector<int>> partition_nodes;
 #ifdef TIMERS
-    clock_t removeTimer;
     clock_t replaceTimer;
     #endif // TIMERS
-    size_t foldedVertexCount;
     bool m_bAllowVertexFolds;
 };
 

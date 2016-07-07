@@ -17,7 +17,7 @@ void full_reductions::reduce_graph() {
 	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj)));
 	std::cout << "Finished creating object" << std::endl;
 	std::cout << "Before call to reduce_graph" << std::endl;
-	parallel_reducers.back()->reduce_graph();
+	parallel_reducers.back()->reduce_graph(mis_config.number_of_partitions, mis_config.partitioner);
 	std::cout << "After call to reduce_graph" << std::endl;
 	std::cout << "Kernel size after parallel run: " << parallel_reducers.back()->size() << std::endl;
 /*	std::vector<std::vector<int> > kernel_adj = parallel_reducers.back()->getKernel();
