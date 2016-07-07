@@ -43,6 +43,7 @@ protected: // methods
     bool FoldVertex(int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
     void partitionGraph(int numPartitions, std::string partitioner);
     void initReducableVertices(int numPartitions);
+    bool samePartition(int v1, int v2);
 
 protected: // members
     std::vector<int> graph_to_kernel_map;
@@ -51,7 +52,8 @@ protected: // members
     std::vector<std::vector<int>> const &m_AdjacencyArray;
     std::vector<SparseArraySet>     neighbors;
     SimpleSet inGraph;
-    SimpleSet reducableVertices;
+    SimpleSet reducableVerticesFold;
+    SimpleSet reducableVerticesIsolatedClique;
     std::vector<int> partitions;
     std::vector<std::vector<int>> partition_nodes;
 #ifdef TIMERS
