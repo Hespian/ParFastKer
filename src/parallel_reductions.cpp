@@ -68,7 +68,7 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner) 
         int edgecut = 0;
         int number_of_partitions = numPartitions;
         double imbalance = 0.03;
-        kaffpa(&N, NULL, xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, rand(), FASTSOCIAL, &edgecut, partitions.data());
+        kaffpa(&N, NULL, xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
         std::cout << "Edgecut: " << edgecut << std::endl;
         for(int node = 0; node < N; ++node) {
             partition_nodes[partitions[node]].push_back(node);
@@ -100,9 +100,9 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner) 
 
         std::ostringstream oss;
         if (partitioner == "parallel_kahip")
-            oss << "mpirun -n " << numPartitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << numPartitions << " --preconfiguration=ultrafast >> partition_output";
+            oss << "mpirun -n " << numPartitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << numPartitions << " --preconfiguration=ultrafast --seed 1337 >> partition_output";
         else if (partitioner == "lpa")
-            oss << "../../KaHIPLPkway/deploy/label_propagation --k " << numPartitions << " ./tmpgraph.graph --seed=6 --label_propagation_iterations=1 --output_filename=tmppartition >> partition_output";
+            oss << "../../KaHIPLPkway/deploy/label_propagation --k " << numPartitions << " ./tmpgraph.graph --seed=1337 --label_propagation_iterations=1 --output_filename=tmppartition >> partition_output";
         else {
             cout << "Unknown partitioner" << std::endl;
             exit(1);
