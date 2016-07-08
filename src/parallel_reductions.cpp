@@ -18,8 +18,8 @@
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
 
-#define INSERT_REMAINING(remaining, v) if(reducableVerticesIsolatedClique.Contains(v)) remaining.Insert(v);
-#define REMOVE_NEIGHBOR(neighbor, vertex) if(partitions[vertex] == partitions[neighbor]) neighbors[neighbor].Remove(vertex);
+#define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) neighbors[neighbor].Remove(vertex);
 
 using namespace std;
 
@@ -28,8 +28,6 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , neighbors(adjacencyArray.size())
  , inGraph(adjacencyArray.size(), true)
  , partitions(adjacencyArray.size())
- , reducableVerticesFold(adjacencyArray.size(), true)
- , reducableVerticesIsolatedClique(adjacencyArray.size(), true)
 #ifdef TIMERS
  , replaceTimer(0)
  #endif // TIMERS
@@ -178,13 +176,15 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
     }
 }
 
-bool parallel_reductions::RemoveIsolatedClique(int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
+bool parallel_reductions::RemoveIsolatedClique(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
 {
-    assert(reducableVerticesIsolatedClique.Contains(vertex));
     /*if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;*/
 
     for (int const neighbor : neighbors[vertex]) {
+        if (partitions[neighbor] != partition) {
+            return false;
+        }
         if (neighbors[neighbor].Size() < neighbors[vertex].Size()) {
             return false;
         }
@@ -219,26 +219,22 @@ bool parallel_reductions::RemoveIsolatedClique(int const vertex, vector<Reductio
         for (int const neighbor : neighbors[vertex]) {
             inGraph.Remove(neighbor);
             remaining.Remove(neighbor);
-            reducableVerticesIsolatedClique.Remove(neighbor);
-            reducableVerticesFold.Remove(neighbor);
             independent_set[neighbor] = 1;
             // reduction.AddNeighbor(neighbor);
             // reduction.AddRemovedEdge(vertex,   neighbor);
             // reduction.AddRemovedEdge(neighbor, vertex);
         }
         inGraph.Remove(vertex);
-        reducableVerticesFold.Remove(vertex);
-        reducableVerticesIsolatedClique.Remove(vertex);
 
         for (int const neighbor : neighbors[vertex]) {
             for (int const nNeighbor : neighbors[neighbor]) {
                 if (inGraph.Contains(nNeighbor)) {
-                    INSERT_REMAINING(remaining, nNeighbor);
+                    INSERT_REMAINING(partition, remaining, nNeighbor);
                     // remaining.Insert(nNeighbor);
                 }
 
                 if (nNeighbor != vertex) {
-                    REMOVE_NEIGHBOR(nNeighbor, neighbor);
+                    REMOVE_NEIGHBOR(partition, nNeighbor, neighbor);
                     // neighbors[nNeighbor].Remove(neighbor);
                     // reduction.AddRemovedEdge(nNeighbor, neighbor);
                     // reduction.AddRemovedEdge(neighbor, nNeighbor);
@@ -255,11 +251,26 @@ bool parallel_reductions::RemoveIsolatedClique(int const vertex, vector<Reductio
     return false;
 }
 
-bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount)
+bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int const partition) {
+    for(int neighbor1 : neighbors[vertex]) {
+        updateNeighborhood(neighbor1);
+        if(partitions[neighbor1] != partition) {
+            return false;       
+        }
+        for(int neighbor2 : neighbors[vertex]) {
+            if(partitions[neighbor2] != partition) {
+                return false;       
+            }
+        }
+    }
+    return true;
+}
+
+bool parallel_reductions::FoldVertex(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount)
 {
-    assert(reducableVerticesFold.Contains(vertex));
     if (neighbors[vertex].Size() != 2) return false;
     if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) return false; // neighbors can't be adjacent.
+    if (!isTwoNeighborhoodInSamePartition(vertex, partition)) return false;
 
     foldedVertexCount++;
 
@@ -270,12 +281,6 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
     reduction.SetVertex(vertex);
     reduction.AddNeighbor(vertex1);
     reduction.AddNeighbor(vertex2);
-
-    if(!reducableVerticesFold.Contains(vertex1) || !reducableVerticesFold.Contains(vertex2))
-        reducableVerticesFold.Remove(vertex);
-
-    if(!reducableVerticesIsolatedClique.Contains(vertex1) || !reducableVerticesIsolatedClique.Contains(vertex2))
-        reducableVerticesIsolatedClique.Remove(vertex);
 
     neighbors[vertex].Clear();
     neighbors[vertex].Resize(neighbors[vertex1].Size() + neighbors[vertex2].Size());
@@ -294,7 +299,7 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
         // reduction.AddRemovedEdge(vertex1, neighbor1);
         neighbors[vertex].Insert(neighbor1);
         assert(partitions[vertex] == partitions[neighbor1]);
-        INSERT_REMAINING(remaining, neighbor1);
+        INSERT_REMAINING(partition, remaining, neighbor1);
         // remaining.Insert(neighbor1);
     }
     neighbors[vertex1].Clear();
@@ -307,7 +312,7 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
         // reduction.AddRemovedEdge(vertex2, neighbor2);
         neighbors[vertex].Insert(neighbor2);
         assert(partitions[vertex] == partitions[neighbor2]);
-        INSERT_REMAINING(remaining, neighbor2);
+        INSERT_REMAINING(partition, remaining, neighbor2);
         // remaining.Insert(neighbor2);
     }
 
@@ -318,7 +323,7 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
         neighbors[neighbor].Insert(vertex);
     }
 
-    INSERT_REMAINING(remaining, vertex);
+    INSERT_REMAINING(partition, remaining, vertex);
     // remaining.Insert(vertex);
 
     vReductions.emplace_back(std::move(reduction));
@@ -326,44 +331,21 @@ bool parallel_reductions::FoldVertex(int const vertex, vector<Reduction> &vReduc
     remaining.Remove(vertex1);
     remaining.Remove(vertex2);
     inGraph.Remove(vertex2);
-    reducableVerticesFold.Remove(vertex2);
-    reducableVerticesIsolatedClique.Remove(vertex2);
     inGraph.Remove(vertex1);
-    reducableVerticesFold.Remove(vertex1);
-    reducableVerticesIsolatedClique.Remove(vertex1);
 
     return true;
 }
 
-void parallel_reductions::initReducableVertices(int numPartitions) {
-    std::cout << "Start initializing reducable vertices" << std::endl;
-    double startClock = omp_get_wtime();
-
-    #pragma omp parallel for
-    for(int partition = 0; partition < numPartitions; ++partition) {
-        for(int vertex : partition_nodes[partition]) {
-            for(int neighbor1 : neighbors[vertex]) {
-                if(partitions[neighbor1] != partition) {
-                    reducableVerticesFold.Remove(vertex);
-                    reducableVerticesIsolatedClique.Remove(vertex);
-                    for(int neighbor2 : neighbors[vertex]) {
-                        reducableVerticesFold.Remove(neighbor2);
-                    }
-                    break;
-                }
-            }
+void parallel_reductions::updateNeighborhood(int const vertex) {
+    std::vector<int> verticesToRemove;
+    for(int neighbor: neighbors[vertex]) {
+        if(!inGraph.Contains(neighbor)) {
+            verticesToRemove.push_back(neighbor);
         }
     }
-
-    double endClock = omp_get_wtime();
-    std::cout << "Initializing reducable vertices took " << (endClock - startClock) << " seconds" << std::endl;
-
-    int count = 0;
-    for(int vertex = 0; vertex < m_AdjacencyArray.size(); vertex++) {
-        if(reducableVerticesIsolatedClique.Contains(vertex))
-            count++;
+    for(int neighborToRemove : verticesToRemove) {
+        neighbors[vertex].Remove(neighborToRemove);
     }
-    std::cout << "Number of reducable vertices: " << count << std::endl;
 }
 
 void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
@@ -379,13 +361,11 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
         remainingPerPartition[partition] = remaining;
     }
     
-    initReducableVertices(numPartitions);
-
     double startClock = omp_get_wtime();
 
     #pragma omp parallel for
     for(int partition = 0; partition < numPartitions; partition++) {
-        ApplyReductions(partition_nodes[partition], ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition]);
+        ApplyReductions(partition, partition_nodes[partition], ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition]);
     }
 
 
@@ -393,12 +373,12 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining)
+void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining)
 {
     std::cout << "Filling remaining vertices set..." << std::endl;
     remaining.Clear();
     for (int const vertex : vertices) {
-        INSERT_REMAINING(remaining, vertex);
+        INSERT_REMAINING(partition, remaining, vertex);
     }
     int iterations(0);
     int foldedVertexCount(0);
@@ -407,10 +387,10 @@ void parallel_reductions::ApplyReductions(vector<int> vertices, vector<Reduction
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());
         remaining.Remove(vertex);
-        assert(reducableVerticesIsolatedClique.Contains(vertex));
-        bool reduction = RemoveIsolatedClique(vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
-        if (!reduction && m_bAllowVertexFolds && reducableVerticesFold.Contains(vertex)) {
-            reduction = FoldVertex(vertex, vReductions, remaining, foldedVertexCount);
+        updateNeighborhood(vertex);
+        bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
+        if (!reduction && m_bAllowVertexFolds) {
+            reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
         }
         iterations++;
         if(iterations % 1000000 == 0) {
