@@ -178,6 +178,7 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
 
 bool parallel_reductions::RemoveIsolatedClique(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
 {
+    assert(partitions[vertex] == partition);
     /*if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;*/
 
@@ -248,6 +249,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         isolatedCliqueCount++;
         return true;
     }
+    assert(false);
     return false;
 }
 
@@ -257,7 +259,7 @@ bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int
         if(partitions[neighbor1] != partition) {
             return false;       
         }
-        for(int neighbor2 : neighbors[vertex]) {
+        for(int neighbor2 : neighbors[neighbor1]) {
             if(partitions[neighbor2] != partition) {
                 return false;       
             }
@@ -268,6 +270,7 @@ bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int
 
 bool parallel_reductions::FoldVertex(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount)
 {
+    assert(partitions[vertex] == partition);
     if (neighbors[vertex].Size() != 2) return false;
     if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) return false; // neighbors can't be adjacent.
     if (!isTwoNeighborhoodInSamePartition(vertex, partition)) return false;
@@ -387,6 +390,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());
         remaining.Remove(vertex);
+        assert(partitions[vertex] == partition);
         updateNeighborhood(vertex);
         bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
         if (!reduction && m_bAllowVertexFolds) {
