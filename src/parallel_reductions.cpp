@@ -378,7 +378,8 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
 
 void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining)
 {
-    std::cout << "Filling remaining vertices set..." << std::endl;
+    double startClock = omp_get_wtime();
+    std::cout << partition << ": Filling remaining vertices set..." << std::endl;
     remaining.Clear();
     for (int const vertex : vertices) {
         INSERT_REMAINING(partition, remaining, vertex);
@@ -386,7 +387,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
     int iterations(0);
     int foldedVertexCount(0);
     int isolatedCliqueCount(0);
-    std::cout << "Starting reductions..." << std::endl;
+    std::cout << partition << ": Starting reductions..." << std::endl;
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());
         remaining.Remove(vertex);
@@ -398,11 +399,13 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
         }
         iterations++;
         if(iterations % 1000000 == 0) {
-            std::cout << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
+            std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
         }
     }
-    std::cout << iterations << " iterations. Currently queued vertices: " << remaining.Size()  << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
-    std::cout << "Finished reductions!" << std::endl;
+    std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
+    std::cout << partition << ": Finished reductions!" << std::endl;
+    double endClock = omp_get_wtime();
+    cout << partition << ": Time spent applying reductions  : " << (endClock - startClock) << endl;
 }
 
 void parallel_reductions::UndoReductions(vector<Reduction> const &vReductions)
