@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 2.8.7)
 project(fast-reductions)
 
 # Define for not using preprocessing for the vertex fold reduction
-OPTION(NO_PREPROCESSING "Don't precompute two neighborhood of nodes to speed up the vertex fold reduction" OFF)
+OPTION(PROFILING "Add detailed timing of the reductions. This will affect the overall runtime and blow up the output" OFF)
 
-MESSAGE(STATUS "NO_PREPROCESSING? " ${NO_PREPROCESSING})
-IF(NO_PREPROCESSING)
-    ADD_DEFINITIONS(-DNO_PREPROCESSING)
-ENDIF(NO_PREPROCESSING)
+MESSAGE(STATUS "PROFILING? " ${PROFILING})
+IF(PROFILING)
+    ADD_DEFINITIONS(-DPROFILING)
+ENDIF(PROFILING)
 
 # Inlcude for some machines
 include_directories(/usr/include/mpi)
