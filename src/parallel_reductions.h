@@ -53,8 +53,10 @@ protected: // members
     std::vector<std::vector<int>> const &m_AdjacencyArray;
     std::vector<SparseArraySet>     neighbors;
     SimpleSet inGraph;
+    SimpleSet neighborhoodChanged;
     std::vector<int> partitions;
     std::vector<std::vector<int>> partition_nodes;
+    std::vector<int> numUpdatedNeighborhoods;
 #ifdef TIMERS
     clock_t replaceTimer;
     #endif // TIMERS

@@ -19,7 +19,7 @@
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
-#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) neighbors[neighbor].Remove(vertex);
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) neighbors[neighbor].Remove(vertex); else neighborhoodChanged.Insert(neighbor);
 
 using namespace std;
 
@@ -27,6 +27,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  : m_AdjacencyArray(adjacencyArray)
  , neighbors(adjacencyArray.size())
  , inGraph(adjacencyArray.size(), true)
+ , neighborhoodChanged(adjacencyArray.size(), false)
  , partitions(adjacencyArray.size())
 #ifdef TIMERS
  , replaceTimer(0)
@@ -255,10 +256,10 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 
 bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int const partition) {
     for(int neighbor1 : neighbors[vertex]) {
-        updateNeighborhood(neighbor1);
         if(partitions[neighbor1] != partition) {
             return false;       
         }
+        updateNeighborhood(neighbor1);
         for(int neighbor2 : neighbors[neighbor1]) {
             if(partitions[neighbor2] != partition) {
                 return false;       
@@ -340,6 +341,12 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 }
 
 void parallel_reductions::updateNeighborhood(int const vertex) {
+    if(!neighborhoodChanged.Contains(vertex))
+        return;
+
+    neighborhoodChanged.Remove(vertex);
+    numUpdatedNeighborhoods[partitions[vertex]]++;
+
     std::vector<int> verticesToRemove;
     for(int neighbor: neighbors[vertex]) {
         if(!inGraph.Contains(neighbor)) {
@@ -357,6 +364,7 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
     vector<vector<bool>> vMarkedVerticesPerPartition(numPartitions);
     vector<ArraySet> remainingPerPartition(numPartitions);
     ReductionsPerPartition = vector<vector<Reduction>>(numPartitions);
+    numUpdatedNeighborhoods = vector<int>(numPartitions);
     for(int partition = 0; partition < numPartitions; partition++) {
         std::vector<bool> vMarkedVertices = std::vector<bool>(m_AdjacencyArray.size(), false);
         vMarkedVerticesPerPartition[partition] = vMarkedVertices;
@@ -404,6 +412,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
     }
     std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
     std::cout << partition << ": Finished reductions!" << std::endl;
+    std::cout << partition << ": Updated " << numUpdatedNeighborhoods[partition] << " neighborhoods" << std::endl;
     double endClock = omp_get_wtime();
     cout << partition << ": Time spent applying reductions  : " << (endClock - startClock) << endl;
 }
