@@ -184,22 +184,18 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 {
     assert(partitions[vertex] == partition);
 
-    clock_t startClock = clock();
+    profilingHelper.startClock(partition, vertex);
 
     /*if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;*/
 
     for (int const neighbor : neighbors[vertex]) {
         if (partitions[neighbor] != partition) {
-            clock_t endClock = clock();
-            clock_t time = endClock - startClock;
-            profilingHelper.addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(partition, vertex, time);
+            profilingHelper.addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(partition);
             return false;
         }
         if (neighbors[neighbor].Size() < neighbors[vertex].Size()) {
-            clock_t endClock = clock();
-            clock_t time = endClock - startClock;
-            profilingHelper.addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(partition, vertex, time);
+            profilingHelper.addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(partition);
             return false;
         }
     }
@@ -223,9 +219,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         vMarkedVertices[neighbor] = false;
 
         if (!superSet) {
-            clock_t endClock = clock();
-            clock_t time = endClock - startClock;
-            profilingHelper.addTimeUnsuccessfulIsolatedCliqueNoCliquePerDegree(partition, vertex, time);
+            profilingHelper.addTimeUnsuccessfulIsolatedCliqueNoCliquePerDegree(partition);
             return false;
         }
     }
@@ -264,9 +258,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         // vReductions.emplace_back(std::move(reduction));
         isolatedCliqueCount++;
 
-        clock_t endClock = clock();
-        clock_t time = endClock - startClock;
-        profilingHelper.addTimeSuccessfulIsolatedCliquePerDegree(partition, vertex, time);
+        profilingHelper.addTimeSuccessfulIsolatedCliquePerDegree(partition);
         return true;
     }
     assert(false);
@@ -292,24 +284,18 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 {
     assert(partitions[vertex] == partition);
 
-    clock_t startClock = clock();
+    profilingHelper.startClock(partition, vertex);
 
     if (neighbors[vertex].Size() != 2) { 
-        clock_t endClock = clock();
-        clock_t time = endClock - startClock;
-        profilingHelper.addTimeUnsuccessfulFoldDegree(partition, time);
+        profilingHelper.addTimeUnsuccessfulFoldDegree(partition);
         return false;
     }
     if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) {
-        clock_t endClock = clock();
-        clock_t time = endClock - startClock;
-        profilingHelper.addTimeUnsuccessfulFoldAdjacent(partition, vertex, time);
+        profilingHelper.addTimeUnsuccessfulFoldAdjacent(partition);
         return false; // neighbors can't be adjacent.
     }
     if (!isTwoNeighborhoodInSamePartition(vertex, partition)) { 
-        clock_t endClock = clock();
-        clock_t time = endClock - startClock;
-        profilingHelper.addTimeUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize(partition, vertex, time);
+        profilingHelper.addTimeUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize(partition);
         return false;
     }
 
@@ -374,9 +360,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     inGraph.Remove(vertex2);
     inGraph.Remove(vertex1);
 
-    clock_t endClock = clock();
-    clock_t time = endClock - startClock;
-    profilingHelper.addTimeSuccessfulFoldPerTwoNeighborhoodSize(partition, vertex, time);
+    profilingHelper.addTimeSuccessfulFoldPerTwoNeighborhoodSize(partition);
     return true;
 }
 
@@ -385,7 +369,7 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
         return;
     neighborhoodChanged.Remove(vertex);
 
-    clock_t startClock = clock();
+    profilingHelper.startClockUpdateNeighborhood(partitions[vertex], vertex);
 
     std::vector<int> verticesToRemove;
     for(int neighbor: neighbors[vertex]) {
@@ -397,9 +381,7 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
         neighbors[vertex].Remove(neighborToRemove);
     }
 
-    clock_t endClock = clock();
-    clock_t time = endClock - startClock;
-    profilingHelper.addTimeUpdateNeighborhood(partitions[vertex], vertex, time);
+    profilingHelper.addTimeUpdateNeighborhood(partitions[vertex]);
 }
 
 void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
@@ -425,8 +407,8 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
 
 
     double endClock = omp_get_wtime();
-    cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
     profilingHelper.print();
+    cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
 
 void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining)

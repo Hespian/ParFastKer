@@ -18,46 +18,75 @@ public:
 	, timesUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(numPartitions)
 	, timesUnsuccessfulIsolatedCliqueNoCliquePerDegree(numPartitions)
 	, timesSuccessfulIsolatedCliquePerDegree(numPartitions)
+	, startTimersPerPartition(numPartitions)
+	, currentVertexPartition(numPartitions)
+	, startTimersUpdateNeighborhoodPerPartition(numPartitions)
+	, currentVertexUpdateNeighborhoodPartition(numPartitions)
 	{}
 
 	ProfilingHelper() {}
 
-	void addTimeUpdateNeighborhood(int const partition, int const vertex, clock_t const time) {
+	void startClock(int const partition, int const vertex) {
+		currentVertexPartition[partition] = vertex;
+		startTimersPerPartition[partition] = clock();
+	}
+
+	void startClockUpdateNeighborhood(int const partition, int const vertex) {
+		currentVertexUpdateNeighborhoodPartition[partition] = vertex;
+		startTimersUpdateNeighborhoodPerPartition[partition] = clock();
+	}
+
+	void addTimeUpdateNeighborhood(int const partition) {
+		clock_t time = clock() - startTimersUpdateNeighborhoodPerPartition[partition];
+		int vertex = currentVertexUpdateNeighborhoodPartition[partition];
 		int degree = (*neighborsRef)[vertex].Size();
 		addNewTime(timesUpdateNeighborhoodsPerDegree[partition], degree, time);
 	}
 
-	void addTimeUnsuccessfulFoldDegree(int const partition, clock_t const time) {
+	void addTimeUnsuccessfulFoldDegree(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
 		timesUnsuccessfulFoldDegree[partition].push_back(time);
 	}
 
-	void addTimeUnsuccessfulFoldAdjacent(int const partition, int const vertex, clock_t const time) {
+	void addTimeUnsuccessfulFoldAdjacent(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
+		int vertex = currentVertexPartition[partition];
 		int neighbor = (*neighborsRef)[vertex][0];
 		int neighborDegree = (*neighborsRef)[neighbor].Size();
 		addNewTime(timesUnsuccessfulFoldAdjacentPerNeighborDegree[partition], neighborDegree, time);
 	}
 
-	void addTimeUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize(int const partition, int const vertex, clock_t const time) {
+	void addTimeUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
+		int vertex = currentVertexPartition[partition];
 		int NeighbordhoodSize = twoNeighbordhoodSize(vertex);
 		addNewTime(timesUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize[partition], NeighbordhoodSize, time);
 	}
 
-	void addTimeSuccessfulFoldPerTwoNeighborhoodSize(int const partition, int const vertex, clock_t const time) {
+	void addTimeSuccessfulFoldPerTwoNeighborhoodSize(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
+		int vertex = currentVertexPartition[partition];
 		int NeighbordhoodSize = twoNeighbordhoodSize(vertex);
 		addNewTime(timesSuccessfulFoldPerTwoNeighborhoodSize[partition], NeighbordhoodSize, time);
 	}
 
-	void addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(int const partition, int const vertex, clock_t const time) {
+	void addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
+		int vertex = currentVertexPartition[partition];
 		int degree = (*neighborsRef)[vertex].Size();
 		addNewTime(timesUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree[partition], degree, time);
 	}
 
-	void addTimeUnsuccessfulIsolatedCliqueNoCliquePerDegree(int const partition, int const vertex, clock_t const time) {
+	void addTimeUnsuccessfulIsolatedCliqueNoCliquePerDegree(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
+		int vertex = currentVertexPartition[partition];
 		int degree = (*neighborsRef)[vertex].Size();
 		addNewTime(timesUnsuccessfulIsolatedCliqueNoCliquePerDegree[partition], degree, time);
 	}
 
-	void addTimeSuccessfulIsolatedCliquePerDegree(int const partition, int const vertex, clock_t const time) {
+	void addTimeSuccessfulIsolatedCliquePerDegree(int const partition) {
+		clock_t time = clock() - startTimersPerPartition[partition];
+		int vertex = currentVertexPartition[partition];
 		int degree = (*neighborsRef)[vertex].Size();
 		addNewTime(timesSuccessfulIsolatedCliquePerDegree[partition], degree, time);
 	}
@@ -120,6 +149,11 @@ protected:
 			std::cout << std::endl;
 		}
 	}
+
+	std::vector<clock_t> startTimersPerPartition;
+	std::vector<int> currentVertexPartition;
+	std::vector<clock_t> startTimersUpdateNeighborhoodPerPartition;
+	std::vector<int> currentVertexUpdateNeighborhoodPartition;
 
 	std::vector<SparseArraySet> *neighborsRef;
 
