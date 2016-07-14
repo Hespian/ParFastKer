@@ -1,6 +1,7 @@
 #include "parallel_reductions.h"
 #include "ArraySet.h"
 #include "SparseArraySet.h"
+#include "ProfilingHelper.h"
 
 #include <vector>
 #include <set>
@@ -22,6 +23,8 @@
 #define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) neighbors[neighbor].Remove(vertex); else neighborhoodChanged.Insert(neighbor);
 
 using namespace std;
+
+ProfilingHelper profilingHelper;
 
 parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArray)
  : m_AdjacencyArray(adjacencyArray)
@@ -180,14 +183,23 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
 bool parallel_reductions::RemoveIsolatedClique(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
 {
     assert(partitions[vertex] == partition);
+
+    clock_t startClock = clock();
+
     /*if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;*/
 
     for (int const neighbor : neighbors[vertex]) {
         if (partitions[neighbor] != partition) {
+            clock_t endClock = clock();
+            clock_t time = endClock - startClock;
+            profilingHelper.addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(partition, vertex, time);
             return false;
         }
         if (neighbors[neighbor].Size() < neighbors[vertex].Size()) {
+            clock_t endClock = clock();
+            clock_t time = endClock - startClock;
+            profilingHelper.addTimeUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree(partition, vertex, time);
             return false;
         }
     }
@@ -211,6 +223,9 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         vMarkedVertices[neighbor] = false;
 
         if (!superSet) {
+            clock_t endClock = clock();
+            clock_t time = endClock - startClock;
+            profilingHelper.addTimeUnsuccessfulIsolatedCliqueNoCliquePerDegree(partition, vertex, time);
             return false;
         }
     }
@@ -248,6 +263,10 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 
         // vReductions.emplace_back(std::move(reduction));
         isolatedCliqueCount++;
+
+        clock_t endClock = clock();
+        clock_t time = endClock - startClock;
+        profilingHelper.addTimeSuccessfulIsolatedCliquePerDegree(partition, vertex, time);
         return true;
     }
     assert(false);
@@ -272,9 +291,27 @@ bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int
 bool parallel_reductions::FoldVertex(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount)
 {
     assert(partitions[vertex] == partition);
-    if (neighbors[vertex].Size() != 2) return false;
-    if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) return false; // neighbors can't be adjacent.
-    if (!isTwoNeighborhoodInSamePartition(vertex, partition)) return false;
+
+    clock_t startClock = clock();
+
+    if (neighbors[vertex].Size() != 2) { 
+        clock_t endClock = clock();
+        clock_t time = endClock - startClock;
+        profilingHelper.addTimeUnsuccessfulFoldDegree(partition, time);
+        return false;
+    }
+    if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) {
+        clock_t endClock = clock();
+        clock_t time = endClock - startClock;
+        profilingHelper.addTimeUnsuccessfulFoldAdjacent(partition, vertex, time);
+        return false; // neighbors can't be adjacent.
+    }
+    if (!isTwoNeighborhoodInSamePartition(vertex, partition)) { 
+        clock_t endClock = clock();
+        clock_t time = endClock - startClock;
+        profilingHelper.addTimeUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize(partition, vertex, time);
+        return false;
+    }
 
     foldedVertexCount++;
 
@@ -337,15 +374,18 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     inGraph.Remove(vertex2);
     inGraph.Remove(vertex1);
 
+    clock_t endClock = clock();
+    clock_t time = endClock - startClock;
+    profilingHelper.addTimeSuccessfulFoldPerTwoNeighborhoodSize(partition, vertex, time);
     return true;
 }
 
 void parallel_reductions::updateNeighborhood(int const vertex) {
     if(!neighborhoodChanged.Contains(vertex))
         return;
-
     neighborhoodChanged.Remove(vertex);
-    numUpdatedNeighborhoods[partitions[vertex]]++;
+
+    clock_t startClock = clock();
 
     std::vector<int> verticesToRemove;
     for(int neighbor: neighbors[vertex]) {
@@ -356,15 +396,19 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
     for(int neighborToRemove : verticesToRemove) {
         neighbors[vertex].Remove(neighborToRemove);
     }
+
+    clock_t endClock = clock();
+    clock_t time = endClock - startClock;
+    profilingHelper.addTimeUpdateNeighborhood(partitions[vertex], vertex, time);
 }
 
 void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
+    profilingHelper = ProfilingHelper(neighbors, numPartitions);
     partitionGraph(numPartitions, partitioner);
 
     vector<vector<bool>> vMarkedVerticesPerPartition(numPartitions);
     vector<ArraySet> remainingPerPartition(numPartitions);
     ReductionsPerPartition = vector<vector<Reduction>>(numPartitions);
-    numUpdatedNeighborhoods = vector<int>(numPartitions);
     for(int partition = 0; partition < numPartitions; partition++) {
         std::vector<bool> vMarkedVertices = std::vector<bool>(m_AdjacencyArray.size(), false);
         vMarkedVerticesPerPartition[partition] = vMarkedVertices;
@@ -382,6 +426,7 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
 
     double endClock = omp_get_wtime();
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
+    profilingHelper.print();
 }
 
 void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining)
@@ -412,7 +457,6 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
     }
     std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
     std::cout << partition << ": Finished reductions!" << std::endl;
-    std::cout << partition << ": Updated " << numUpdatedNeighborhoods[partition] << " neighborhoods" << std::endl;
     double endClock = omp_get_wtime();
     cout << partition << ": Time spent applying reductions  : " << (endClock - startClock) << endl;
 }

@@ -56,7 +56,6 @@ protected: // members
     SimpleSet neighborhoodChanged;
     std::vector<int> partitions;
     std::vector<std::vector<int>> partition_nodes;
-    std::vector<int> numUpdatedNeighborhoods;
 #ifdef TIMERS
     clock_t replaceTimer;
     #endif // TIMERS
