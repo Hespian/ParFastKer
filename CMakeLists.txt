@@ -9,6 +9,8 @@ IF(PROFILING)
     ADD_DEFINITIONS(-DPROFILING)
 ENDIF(PROFILING)
 
+ADD_DEFINITIONS(-DUNSAFE_LONG)
+
 # Inlcude for some machines
 include_directories(/usr/include/mpi)
  

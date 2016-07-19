@@ -51,7 +51,7 @@ class tabu_moves_queue  {
                 bool empty();
 
                 void insert(NodeID node, PartitionID block, int time); 
-                int minValue();
+                Gain minValue();
                 std::pair<NodeID, PartitionID> deleteMin();
 
                 bool contains(NodeID node, PartitionID block);
