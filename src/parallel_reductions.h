@@ -23,6 +23,7 @@ public:
     ~parallel_reductions();
 
     void reduce_graph(int numPartitions, std::string partitioner, int const weightType);
+    void updateAllNeighborhoods();
 
     void ApplyReductions(int const partition, std::vector<int> vertices, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time);
     void UndoReductions(std::vector<Reduction> const &vReductions);
@@ -50,7 +51,7 @@ protected: // methods
 protected: // members
     std::vector<int> graph_to_kernel_map;
     std::vector<int> kernel_solution;
-    std::vector<std::vector<Reduction>> ReductionsPerPartition;
+    std::vector<std::vector<std::vector<Reduction>>> AllReductions;
     std::vector<std::vector<int>> const &m_AdjacencyArray;
     std::vector<SparseArraySet>     neighbors;
     SimpleSet inGraph;

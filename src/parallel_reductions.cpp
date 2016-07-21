@@ -65,12 +65,19 @@ vector<int> parallel_reductions::getVertexWeights(int const weightType) {
             weights[vertex] = degree;
         if(weightType == VERTEX_WEIGHTS_DEGREE_SQUARE)
             weights[vertex] = degree * degree;
+        assert(weights[vertex] >= 0);
     }
 }
 
 void parallel_reductions::partitionGraph(int numPartitions, string partitioner, int const weightType) {
     std::cout << "Start partitioning into " << numPartitions << " partitions using " << partitioner << std::endl;
     partition_nodes.resize(numPartitions);
+    if(numPartitions == 1) {
+        for(int vertex = 0; vertex < neighbors.size(); vertex++) {
+            partitions[vertex] = 0;
+            partition_nodes[0].push_back(vertex);
+        }
+    }
     int N = m_AdjacencyArray.size();
     vector<int> weights = getVertexWeights(weightType);
     if (partitioner == "kahip") {
@@ -192,8 +199,10 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
             independent_set[node] = kernel_solution[graph_to_kernel_map[node]];
         }
     }
-    for(auto Reductions: ReductionsPerPartition) {
-        ApplyKernelSolutionToReductions(Reductions);
+    for(int i = AllReductions.size(); i > 0; i--) {
+        for(auto Reductions: AllReductions[i - 1]) {
+            ApplyKernelSolutionToReductions(Reductions);
+        }
     }
 }
 
@@ -407,7 +416,7 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner, in
 
     vector<vector<bool>> vMarkedVerticesPerPartition(numPartitions);
     vector<ArraySet> remainingPerPartition(numPartitions);
-    ReductionsPerPartition = vector<vector<Reduction>>(numPartitions);
+    vector<vector<Reduction>> ReductionsPerPartition = vector<vector<Reduction>>(numPartitions);
     for(int partition = 0; partition < numPartitions; partition++) {
         std::vector<bool> vMarkedVertices = std::vector<bool>(m_AdjacencyArray.size(), false);
         vMarkedVerticesPerPartition[partition] = vMarkedVertices;
@@ -426,6 +435,7 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner, in
 
 
     double endClock = omp_get_wtime();
+    AllReductions.push_back(ReductionsPerPartition);
     profilingPrint(&profilingHelper);
 
     for(int partition = 0; partition< numPartitions; partition++) {
@@ -434,13 +444,24 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner, in
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
 
+void parallel_reductions::updateAllNeighborhoods() {
+    double startClock = omp_get_wtime();
+    #pragma omp parallel for
+    for(int vertex = 0; vertex < neighbors.size(); ++vertex)
+        updateNeighborhood(vertex);
+    double endClock = omp_get_wtime();
+    cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
+}
+
 void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time)
 {
     double startClock = omp_get_wtime();
     std::cout << partition << ": Filling remaining vertices set..." << std::endl;
     remaining.Clear();
     for (int const vertex : vertices) {
-        INSERT_REMAINING(partition, remaining, vertex);
+        if(inGraph.Contains(vertex)) {
+            INSERT_REMAINING(partition, remaining, vertex);
+        }
     }
     int iterations(0);
     int foldedVertexCount(0);
@@ -449,6 +470,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());
         remaining.Remove(vertex);
+        assert(inGraph.Contains(vertex));
         assert(partitions[vertex] == partition);
         updateNeighborhood(vertex);
         bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
