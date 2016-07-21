@@ -67,6 +67,7 @@ vector<long> parallel_reductions::getVertexWeights(int const weightType) {
             weights[vertex] = degree * degree;
         assert(weights[vertex] >= 0);
     }
+    return weights;
 }
 
 void parallel_reductions::partitionGraph(int numPartitions, string partitioner, int const weightType) {
