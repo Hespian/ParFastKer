@@ -22,9 +22,9 @@ public:
     parallel_reductions(std::vector<std::vector<int>> const &adjacencyArray);
     ~parallel_reductions();
 
-    void reduce_graph(int numPartitions, std::string partitioner);
+    void reduce_graph(int numPartitions, std::string partitioner, int const weightType);
 
-    void ApplyReductions(int const partition, std::vector<int> vertices, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining);
+    void ApplyReductions(int const partition, std::vector<int> vertices, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time);
     void UndoReductions(std::vector<Reduction> const &vReductions);
     std::vector<std::vector<int>> getKernel();
     void applyKernelSolution(std::vector<int> kernel_solution);
@@ -41,10 +41,11 @@ public:
 protected: // methods
     bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
-    void partitionGraph(int numPartitions, std::string partitioner);
+    void partitionGraph(int numPartitions, std::string partitioner, int const weightType);
     void initReducableVertices(int numPartitions);
     void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition);
+    std::vector<int> getVertexWeights(int const weightType);
 
 protected: // members
     std::vector<int> graph_to_kernel_map;

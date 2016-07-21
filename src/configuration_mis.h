@@ -25,6 +25,7 @@
 #include "definitions.h"
 #include "mis_config.h"
 #include "interface/kaHIP_interface.h"
+#include "kernelizationDefinitions.h"
 
 class configuration_mis {
     public:
@@ -80,6 +81,7 @@ inline void configuration_mis::standard( MISConfig & mis_config ) {
     // KaHIP
     mis_config.partitioner                            = "kahip";
     mis_config.kahip_mode                             = FAST;
+    mis_config.weightType                             = VERTEX_WEIGHTS_DEGREE;
     // Randomization
     mis_config.seed                                   = 0;
     mis_config.imbalance                              = 0.03;

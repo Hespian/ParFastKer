@@ -25,6 +25,7 @@
 #include <omp.h>
 
 #include "configuration_mis.h"
+#include "kernelizationDefinitions.h"
 
 /**
  * Parse the given parameters and apply them to the config.
@@ -49,6 +50,7 @@ int parse_parameters(int argn, char **argv,
     struct arg_str *partitioner         = arg_str0(NULL, "partitioner", NULL, "Partitioner to use. ([kahip, parallel_kahip, lpa]).");
     struct arg_int *kahip_mode          = arg_int0(NULL, "kahip_mode", NULL, "KaHIP mode to use.");
     struct arg_int *num_partitions      = arg_int0(NULL, "num_partitions", NULL, "Number of partitions to use.");
+    struct arg_str *weightType         = arg_str0(NULL, "weight_type", NULL, "Vertex weights to use for partitioning. ([one, degree, degree_square]).");
 
     struct arg_str *filename            = arg_strn(NULL, NULL, "FILE", 1, 1, "Path to graph file.");
     struct arg_str *output              = arg_str0(NULL, "output", NULL, "Path to store resulting independent set.");
@@ -67,6 +69,7 @@ int parse_parameters(int argn, char **argv,
             partitioner,
             kahip_mode,
             num_partitions,
+            weightType,
             console_log,
             disable_checks,
             end
@@ -117,6 +120,12 @@ int parse_parameters(int argn, char **argv,
 
     if (num_partitions->count > 0) {
         mis_config.number_of_partitions = num_partitions->ival[0];
+    }
+
+    if(weightType->count > 0) {
+        if (strcmp(weightType->sval[0], "one") == 0) mis_config.weightType = VERTEX_WEIGHTS_ONE;
+        else if (strcmp(weightType->sval[0], "degree") == 0) mis_config.weightType = VERTEX_WEIGHTS_DEGREE;
+        else if (strcmp(weightType->sval[0], "degree_square") == 0) mis_config.weightType = VERTEX_WEIGHTS_DEGREE_SQUARE;
     }
 
     if (user_seed->count > 0) {

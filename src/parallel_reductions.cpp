@@ -2,6 +2,7 @@
 #include "ArraySet.h"
 #include "SparseArraySet.h"
 #include "ProfilingHelper.h"
+#include "kernelizationDefinitions.h"
 
 #include <vector>
 #include <set>
@@ -53,10 +54,25 @@ parallel_reductions::~parallel_reductions()
 #endif // TIMERS
 }
 
-void parallel_reductions::partitionGraph(int numPartitions, string partitioner) {
+vector<int> parallel_reductions::getVertexWeights(int const weightType) {
+    int N = m_AdjacencyArray.size();
+    vector<int> weights(N, 1);
+    if(weightType == VERTEX_WEIGHTS_ONE)
+        return weights;
+    for(int vertex = 0; vertex < N; vertex++) {
+        int degree = neighbors[vertex].Size();
+        if(weightType == VERTEX_WEIGHTS_DEGREE)
+            weights[vertex] = degree;
+        if(weightType == VERTEX_WEIGHTS_DEGREE_SQUARE)
+            weights[vertex] = degree * degree;
+    }
+}
+
+void parallel_reductions::partitionGraph(int numPartitions, string partitioner, int const weightType) {
     std::cout << "Start partitioning into " << numPartitions << " partitions using " << partitioner << std::endl;
     partition_nodes.resize(numPartitions);
     int N = m_AdjacencyArray.size();
+    vector<int> weights = getVertexWeights(weightType);
     if (partitioner == "kahip") {
         std::vector<int> xadj;
         std::vector<int> adjncy;
@@ -70,7 +86,7 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner) 
         int edgecut = 0;
         int number_of_partitions = numPartitions;
         double imbalance = 0.03;
-        kaffpa(&N, NULL, xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
+        kaffpa(&N, weights.data(), xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
         std::cout << "Edgecut: " << edgecut << std::endl;
         for(int node = 0; node < N; ++node) {
             partition_nodes[partitions[node]].push_back(node);
@@ -86,10 +102,11 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner) 
 
         ofstream outputFile("tmpgraph.graph");
         if (outputFile.is_open()) {
-            outputFile << N << " " << edgecount << " 0\n";
-            for(auto node_adj : m_AdjacencyArray) {
-                for(auto neighbor : node_adj) {
-                    outputFile << neighbor + 1 << " ";
+            outputFile << N << " " << edgecount << " 010\n";
+            for(int vertex = 0; vertex < N; vertex++) {
+                outputFile << weights[vertex];
+                for(auto neighbor : m_AdjacencyArray[vertex]) {
+                    outputFile << " " << neighbor + 1;
                 }
                 outputFile << "\n";
             }
@@ -384,9 +401,9 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
     profilingAddTimeUpdateNeighborhood(&profilingHelper, partitions[vertex]);
 }
 
-void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
+void parallel_reductions::reduce_graph(int numPartitions, string partitioner, int const weightType) {
     profilingInit(&profilingHelper, &neighbors, numPartitions);
-    partitionGraph(numPartitions, partitioner);
+    partitionGraph(numPartitions, partitioner, weightType);
 
     vector<vector<bool>> vMarkedVerticesPerPartition(numPartitions);
     vector<ArraySet> remainingPerPartition(numPartitions);
@@ -397,21 +414,27 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner) {
         ArraySet remaining = ArraySet(m_AdjacencyArray.size());
         remainingPerPartition[partition] = remaining;
     }
+
+    vector<double> partitionTimes(numPartitions);
     
     double startClock = omp_get_wtime();
 
     #pragma omp parallel for
     for(int partition = 0; partition < numPartitions; partition++) {
-        ApplyReductions(partition, partition_nodes[partition], ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition]);
+        ApplyReductions(partition, partition_nodes[partition], ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition]);
     }
 
 
     double endClock = omp_get_wtime();
     profilingPrint(&profilingHelper);
+
+    for(int partition = 0; partition< numPartitions; partition++) {
+        cout << partition << ": Time spent applying reductions  : " << partitionTimes[partition] << endl;
+    }
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining)
+void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time)
 {
     double startClock = omp_get_wtime();
     std::cout << partition << ": Filling remaining vertices set..." << std::endl;
@@ -440,7 +463,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<int> verti
     std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
     std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();
-    cout << partition << ": Time spent applying reductions  : " << (endClock - startClock) << endl;
+    time = (endClock - startClock);
 }
 
 void parallel_reductions::UndoReductions(vector<Reduction> const &vReductions)

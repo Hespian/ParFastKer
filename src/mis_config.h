@@ -42,6 +42,8 @@ struct MISConfig {
     unsigned int kahip_mode;
     // Number of initial partitions to be constructed.
     unsigned int number_of_partitions;
+    // Vertex weight to be used for partitioning
+    int weightType;
     // Write the log into a file
     bool print_log;
     // Write the inpendent set into a file
