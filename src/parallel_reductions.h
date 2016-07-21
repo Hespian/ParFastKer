@@ -46,7 +46,7 @@ protected: // methods
     void initReducableVertices(int numPartitions);
     void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition);
-    std::vector<int> getVertexWeights(int const weightType);
+    std::vector<long> getVertexWeights(int const weightType);
 
 protected: // members
     std::vector<int> graph_to_kernel_map;

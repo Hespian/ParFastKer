@@ -126,6 +126,7 @@ void mis_log::print_config() {
     filebuffer_string << "=========================================="                            << std::endl;
     filebuffer_string << "Partitioner:\t\t\t"        << log_config.partitioner                   << std::endl;
     filebuffer_string << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
+    filebuffer_string << "Weight type:\t\t\t"        << log_config.weightType                    << std::endl;
     filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
     filebuffer_string << "Base imbalance:\t\t\t"     << log_config.imbalance                     << std::endl;
@@ -139,6 +140,7 @@ void mis_log::print_config() {
     std::cout << "=========================================="                            << std::endl;
     std::cout << "Partitioner:\t\t\t"        << log_config.partitioner                   << std::endl;
     std::cout << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
+    std::cout << "Weight type:\t\t\t"        << log_config.weightType                    << std::endl;
     std::cout << "---"                       << std::endl;
     std::cout << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
     std::cout << "Base imbalance:\t\t\t"     << log_config.imbalance                     << std::endl;

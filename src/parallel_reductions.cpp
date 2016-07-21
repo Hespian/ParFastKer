@@ -54,13 +54,13 @@ parallel_reductions::~parallel_reductions()
 #endif // TIMERS
 }
 
-vector<int> parallel_reductions::getVertexWeights(int const weightType) {
+vector<long> parallel_reductions::getVertexWeights(int const weightType) {
     int N = m_AdjacencyArray.size();
-    vector<int> weights(N, 1);
+    vector<long> weights(N, 1);
     if(weightType == VERTEX_WEIGHTS_ONE)
         return weights;
     for(int vertex = 0; vertex < N; vertex++) {
-        int degree = neighbors[vertex].Size();
+        long degree = neighbors[vertex].Size();
         if(weightType == VERTEX_WEIGHTS_DEGREE)
             weights[vertex] = degree;
         if(weightType == VERTEX_WEIGHTS_DEGREE_SQUARE)
@@ -77,9 +77,10 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
             partitions[vertex] = 0;
             partition_nodes[0].push_back(vertex);
         }
+        return;
     }
     int N = m_AdjacencyArray.size();
-    vector<int> weights = getVertexWeights(weightType);
+    vector<long> weights = getVertexWeights(weightType);
     if (partitioner == "kahip") {
         std::vector<int> xadj;
         std::vector<int> adjncy;
@@ -93,7 +94,11 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
         int edgecut = 0;
         int number_of_partitions = numPartitions;
         double imbalance = 0.03;
-        kaffpa(&N, weights.data(), xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
+        vector<int> weightsInt(N);
+        for(int vertex = 0; vertex < N; vertex++) {
+            weightsInt[vertex] = (int)weights[vertex];
+        }
+        kaffpa(&N, weightsInt.data(), xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
         std::cout << "Edgecut: " << edgecut << std::endl;
         for(int node = 0; node < N; ++node) {
             partition_nodes[partitions[node]].push_back(node);
