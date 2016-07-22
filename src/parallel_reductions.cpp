@@ -82,6 +82,7 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
     }
     int N = m_AdjacencyArray.size();
     vector<long> weights = getVertexWeights(weightType);
+    assert(weights.size() == N);
     if (partitioner == "kahip") {
         std::vector<int> xadj;
         std::vector<int> adjncy;

@@ -11,6 +11,8 @@ ENDIF(PROFILING)
 
 ADD_DEFINITIONS(-DUNSAFE_LONG)
 
+ADD_DEFINITIONS(-Wreturn-type)
+
 # Inlcude for some machines
 include_directories(/usr/include/mpi)
  
