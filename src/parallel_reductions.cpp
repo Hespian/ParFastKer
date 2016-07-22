@@ -21,7 +21,7 @@
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
-#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) {neighbors[neighbor].Remove(vertex);} else { assert(partition != partitions[neighbor]); assert(!inGraph.Contains(neighbor) || boundaryVertices.Contains(neighbor) || !neighbors[neighbor].Contains(vertex)); neighborhoodChanged.Insert(neighbor);}
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) {neighbors[neighbor].Remove(vertex);} else { assert(partition != partitions[neighbor]); neighborhoodChanged.Insert(neighbor);}
 
 using namespace std;
 
@@ -74,96 +74,95 @@ vector<long> parallel_reductions::getVertexWeights(int const weightType) {
 void parallel_reductions::partitionGraph(int numPartitions, string partitioner, int const weightType) {
     std::cout << "Start partitioning into " << numPartitions << " partitions using " << partitioner << std::endl;
     partition_nodes.resize(numPartitions);
-    if(numPartitions == 1) {
-        for(int vertex = 0; vertex < neighbors.size(); vertex++) {
-            partitions[vertex] = 0;
-            partition_nodes[0].push_back(vertex);
-        }
-        return;
-    }
     int N = m_AdjacencyArray.size();
-    vector<long> weights = getVertexWeights(weightType);
-    assert(weights.size() == N);
-    if (partitioner == "kahip") {
-        std::vector<int> xadj;
-        std::vector<int> adjncy;
-        for(auto node_adj_list : m_AdjacencyArray) {
-            xadj.push_back(adjncy.size());
-            for(auto neighbor : node_adj_list) {
-                adjncy.push_back(neighbor);
-            }
-        }
-        xadj.push_back(adjncy.size());
-        int edgecut = 0;
-        int number_of_partitions = numPartitions;
-        double imbalance = 0.03;
-        vector<int> weightsInt(N);
+    if(numPartitions == 1) {
         for(int vertex = 0; vertex < N; vertex++) {
-            weightsInt[vertex] = (int)weights[vertex];
+            partitions[vertex] = 0;
         }
-        kaffpa(&N, weightsInt.data(), xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
-        std::cout << "Edgecut: " << edgecut << std::endl;
     } else {
-
-
-        int edgecount = 0;
-        for(auto node_adj : m_AdjacencyArray) {
-            edgecount += node_adj.size();
-        }
-        edgecount /= 2;
-
-        ofstream outputFile("tmpgraph.graph");
-        if (outputFile.is_open()) {
-            outputFile << N << " " << edgecount << " 010\n";
-            for(int vertex = 0; vertex < N; vertex++) {
-                outputFile << weights[vertex];
-                for(auto neighbor : m_AdjacencyArray[vertex]) {
-                    outputFile << " " << neighbor + 1;
+        vector<long> weights = getVertexWeights(weightType);
+        assert(weights.size() == N);
+        if (partitioner == "kahip") {
+            std::vector<int> xadj;
+            std::vector<int> adjncy;
+            for(auto node_adj_list : m_AdjacencyArray) {
+                xadj.push_back(adjncy.size());
+                for(auto neighbor : node_adj_list) {
+                    adjncy.push_back(neighbor);
                 }
-                outputFile << "\n";
             }
-            outputFile.close();
-        }
-        else { 
-            cout << "Unable to open file";
-            exit(1);
-        }
+            xadj.push_back(adjncy.size());
+            int edgecut = 0;
+            int number_of_partitions = numPartitions;
+            double imbalance = 0.03;
+            vector<int> weightsInt(N);
+            for(int vertex = 0; vertex < N; vertex++) {
+                weightsInt[vertex] = (int)weights[vertex];
+            }
+            kaffpa(&N, weightsInt.data(), xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
+            std::cout << "Edgecut: " << edgecut << std::endl;
+        } else {
 
-        std::ostringstream oss;
-        if (partitioner == "parallel_kahip")
-            oss << "mpirun -n " << numPartitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << numPartitions << " --preconfiguration=ultrafast --seed 1337 >> partition_output";
-        else if (partitioner == "lpa")
-            oss << "../../KaHIPLPkway/deploy/label_propagation --k " << numPartitions << " ./tmpgraph.graph --seed=1337 --label_propagation_iterations=1 --output_filename=tmppartition >> partition_output";
-        else {
-            cout << "Unknown partitioner" << std::endl;
-            exit(1);
-        }
-        std::string command = oss.str();
-        std::cout << command << std::endl;
-        int system_succesfull = system(command.c_str());
-        system("rm tmpgraph.graph");
-        if(system_succesfull != 0) {
-            cout << "Command unsuccessful" << std::endl;
-            exit(1);
-        }
 
-        std::string line;
-        std::ifstream inputfile("./tmppartition");
-        if (!inputfile) {
-                std::cerr << "Error opening file" << std::endl;
-                exit(1);
-        }
-        for(int node  = 0; node < N; ++node) {
-            std::getline(inputfile, line);
-                if (line[0] == '%') { //Comment
-                        node--;
-                        continue;
+            int edgecount = 0;
+            for(auto node_adj : m_AdjacencyArray) {
+                edgecount += node_adj.size();
+            }
+            edgecount /= 2;
+
+            ofstream outputFile("tmpgraph.graph");
+            if (outputFile.is_open()) {
+                outputFile << N << " " << edgecount << " 010\n";
+                for(int vertex = 0; vertex < N; vertex++) {
+                    outputFile << weights[vertex];
+                    for(auto neighbor : m_AdjacencyArray[vertex]) {
+                        outputFile << " " << neighbor + 1;
+                    }
+                    outputFile << "\n";
                 }
-                partitions[node] = atol(line.c_str());
-        }
+                outputFile.close();
+            }
+            else { 
+                cout << "Unable to open file";
+                exit(1);
+            }
 
-        inputfile.close();
-        system("rm tmppartition");
+            std::ostringstream oss;
+            if (partitioner == "parallel_kahip")
+                oss << "mpirun -n " << numPartitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << numPartitions << " --preconfiguration=ultrafast --seed 1337 >> partition_output";
+            else if (partitioner == "lpa")
+                oss << "../../KaHIPLPkway/deploy/label_propagation --k " << numPartitions << " ./tmpgraph.graph --seed=1337 --label_propagation_iterations=1 --output_filename=tmppartition >> partition_output";
+            else {
+                cout << "Unknown partitioner" << std::endl;
+                exit(1);
+            }
+            std::string command = oss.str();
+            std::cout << command << std::endl;
+            int system_succesfull = system(command.c_str());
+            system("rm tmpgraph.graph");
+            if(system_succesfull != 0) {
+                cout << "Command unsuccessful" << std::endl;
+                exit(1);
+            }
+
+            std::string line;
+            std::ifstream inputfile("./tmppartition");
+            if (!inputfile) {
+                    std::cerr << "Error opening file" << std::endl;
+                    exit(1);
+            }
+            for(int node  = 0; node < N; ++node) {
+                std::getline(inputfile, line);
+                    if (line[0] == '%') { //Comment
+                            node--;
+                            continue;
+                    }
+                    partitions[node] = atol(line.c_str());
+            }
+
+            inputfile.close();
+            system("rm tmppartition");
+        }
     }
     for(int node = 0; node < N; ++node) {
         assert(partitions[node] >= 0);
@@ -172,6 +171,7 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
     }
 
     for(int node = 0; node < N; ++node) {
+        boundaryVertices.Remove(node);
         for(auto neighbor: neighbors[node]) {
             if(partitions[neighbor] != partitions[node]) {
                 boundaryVertices.Insert(node);
@@ -310,14 +310,17 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
     return false;
 }
 
-bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int const partition) {
+bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining) {
+    if(boundaryVertices.Contains(vertex)) {
+        return false;
+    }
     for(int neighbor : neighbors[vertex]) {
-        if(partitions[neighbor] != partition) {
-            return false;       
-        }
+        bool wasBoundaryVertex = boundaryVertices.Contains(neighbor);
         updateNeighborhood(neighbor);
         if(boundaryVertices.Contains(neighbor)) {
             return false;
+        } else if(wasBoundaryVertex) {
+            remaining.Insert(neighbor);
         }
     }
     return true;
@@ -333,7 +336,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         profilingAddTimeUnsuccessfulFoldDegree(&profilingHelper, partition);
         return false;
     }
-    if (!isTwoNeighborhoodInSamePartition(vertex, partition)) { 
+    if (!isTwoNeighborhoodInSamePartition(vertex, partition, remaining)) { 
         profilingAddTimeUnsuccessfulFoldWrongPartition(&profilingHelper, partition);
         return false;
     }
@@ -458,7 +461,15 @@ void parallel_reductions::reduce_graph(int numPartitions, string partitioner, in
 
     #pragma omp parallel for
     for(int partition = 0; partition < numPartitions; partition++) {
-        ApplyReductions(partition, partition_nodes[partition], ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition]);
+        std::cout << partition << ": Filling remaining vertices set..." << std::endl;
+        remainingPerPartition[partition].Clear();
+        for (int const vertex : partition_nodes[partition]) {
+            if(inGraph.Contains(vertex)) {
+                assert(partitions[vertex] == partition);
+                remainingPerPartition[partition].Insert(vertex);
+            }
+        }
+        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition]);
     }
 
 
@@ -481,16 +492,9 @@ void parallel_reductions::updateAllNeighborhoods() {
     cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(int const partition, vector<int> vertices, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time)
+void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time)
 {
     double startClock = omp_get_wtime();
-    std::cout << partition << ": Filling remaining vertices set..." << std::endl;
-    remaining.Clear();
-    for (int const vertex : vertices) {
-        if(inGraph.Contains(vertex)) {
-            INSERT_REMAINING(partition, remaining, vertex);
-        }
-    }
     int iterations(0);
     int foldedVertexCount(0);
     int isolatedCliqueCount(0);
