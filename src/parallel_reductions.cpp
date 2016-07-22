@@ -129,7 +129,7 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
 
             std::ostringstream oss;
             if (partitioner == "parallel_kahip")
-                oss << "mpirun -n " << numPartitions << " ../../parallel_social_partitioning_package/deploy/parallel_label_compress ./tmpgraph.graph --k=" << numPartitions << " --preconfiguration=ultrafast --seed 1337 >> partition_output";
+                oss << "mpirun -n " << numPartitions << " ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress ./tmpgraph.graph --k=" << numPartitions << " --preconfiguration=ultrafast --seed 1337 >> partition_output";
             else if (partitioner == "lpa")
                 oss << "../../KaHIPLPkway/deploy/label_propagation --k " << numPartitions << " ./tmpgraph.graph --seed=1337 --label_propagation_iterations=1 --output_filename=tmppartition >> partition_output";
             else {
