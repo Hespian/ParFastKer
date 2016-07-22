@@ -21,7 +21,7 @@
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
-#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) neighbors[neighbor].Remove(vertex); else neighborhoodChanged.Insert(neighbor);
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) {neighbors[neighbor].Remove(vertex);} else { assert(partition != partitions[neighbor]); assert(!inGraph.Contains(neighbor) || boundaryVertices.Contains(neighbor) || !neighbors[neighbor].Contains(vertex)); neighborhoodChanged.Insert(neighbor);}
 
 using namespace std;
 
@@ -33,6 +33,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , inGraph(adjacencyArray.size(), true)
  , neighborhoodChanged(adjacencyArray.size(), false)
  , partitions(adjacencyArray.size())
+ , boundaryVertices(adjacencyArray.size(), false)
 #ifdef TIMERS
  , replaceTimer(0)
  #endif // TIMERS
@@ -165,10 +166,19 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
         system("rm tmppartition");
     }
     for(int node = 0; node < N; ++node) {
-            assert(partitions[node] >= 0);
-            assert(partitions[node] < numPartitions);
-            partition_nodes[partitions[node]].push_back(node);
+        assert(partitions[node] >= 0);
+        assert(partitions[node] < numPartitions);
+        partition_nodes[partitions[node]].push_back(node);
+    }
+
+    for(int node = 0; node < N; ++node) {
+        for(auto neighbor: neighbors[node]) {
+            if(partitions[neighbor] != partitions[node]) {
+                boundaryVertices.Insert(node);
+            }
         }
+    }
+
     std::cout << "Finished partitioning" << std::endl;
 }
 
@@ -217,16 +227,18 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 
     profilingStartClock(&profilingHelper, partition, vertex);
 
+    if(boundaryVertices.Contains(vertex)) {
+        profilingAddTimeUnsuccessfulIsolatedCliquePartition(&profilingHelper, partition);
+        return false;
+    }
+
     /*if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;*/
 
     for (int const neighbor : neighbors[vertex]) {
-        if (partitions[neighbor] != partition) {
-            profilingAddTimeUnsuccessfulIsolatedCliqueDegreeOrPartition(&profilingHelper, partition);
-            return false;
-        }
+        assert(partitions[neighbor] == partition);
         if (neighbors[neighbor].Size() < neighbors[vertex].Size()) {
-            profilingAddTimeUnsuccessfulIsolatedCliqueDegreeOrPartition(&profilingHelper, partition);
+            profilingAddTimeUnsuccessfulIsolatedCliqueDegree(&profilingHelper, partition);
             return false;
         }
     }
@@ -260,6 +272,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         independent_set[vertex] = 0;
         for (int const neighbor : neighbors[vertex]) {
             inGraph.Remove(neighbor);
+            boundaryVertices.Remove(neighbor);
             remaining.Remove(neighbor);
             independent_set[neighbor] = 1;
             // reduction.AddNeighbor(neighbor);
@@ -267,6 +280,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
             // reduction.AddRemovedEdge(neighbor, vertex);
         }
         inGraph.Remove(vertex);
+        boundaryVertices.Remove(vertex);
 
         for (int const neighbor : neighbors[vertex]) {
             for (int const nNeighbor : neighbors[neighbor]) {
@@ -297,15 +311,13 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 }
 
 bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int const partition) {
-    for(int neighbor1 : neighbors[vertex]) {
-        if(partitions[neighbor1] != partition) {
+    for(int neighbor : neighbors[vertex]) {
+        if(partitions[neighbor] != partition) {
             return false;       
         }
-        updateNeighborhood(neighbor1);
-        for(int neighbor2 : neighbors[neighbor1]) {
-            if(partitions[neighbor2] != partition) {
-                return false;       
-            }
+        updateNeighborhood(neighbor);
+        if(boundaryVertices.Contains(neighbor)) {
+            return false;
         }
     }
     return true;
@@ -321,19 +333,22 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         profilingAddTimeUnsuccessfulFoldDegree(&profilingHelper, partition);
         return false;
     }
-    if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) {
-        profilingAddTimeUnsuccessfulFoldAdjacent(&profilingHelper, partition);
-        return false; // neighbors can't be adjacent.
-    }
     if (!isTwoNeighborhoodInSamePartition(vertex, partition)) { 
         profilingAddTimeUnsuccessfulFoldWrongPartition(&profilingHelper, partition);
         return false;
+    }
+    if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) {
+        profilingAddTimeUnsuccessfulFoldAdjacent(&profilingHelper, partition);
+        return false; // neighbors can't be adjacent.
     }
 
     foldedVertexCount++;
 
     int const vertex1(neighbors[vertex][0]);
     int const vertex2(neighbors[vertex][1]);
+
+    assert(partitions[vertex1] == partition);
+    assert(partitions[vertex2] == partition);
 
     Reduction reduction(FOLDED_VERTEX);
     reduction.SetVertex(vertex);
@@ -351,6 +366,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     // reduction.AddRemovedEdge(vertex2, vertex);
 
     for (int const neighbor1 : neighbors[vertex1]) {
+        assert(partitions[neighbor1] == partition);
         if (neighbor1 == vertex) continue;
         neighbors[neighbor1].Remove(vertex1);
         // reduction.AddRemovedEdge(neighbor1, vertex1);
@@ -364,6 +380,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     assert(partitions[vertex] == partitions[vertex1]);
 
     for (int const neighbor2 : neighbors[vertex2]) {
+        assert(partitions[neighbor2] == partition);
         if (neighbor2 == vertex) continue;
         neighbors[neighbor2].Remove(vertex2);
         // reduction.AddRemovedEdge(neighbor2, vertex2);
@@ -403,15 +420,21 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
     profilingStartClockUpdateNeighborhood(&profilingHelper, partitions[vertex], vertex);
 
     std::vector<int> verticesToRemove;
+    int partition = partitions[vertex];
+    bool isBoundaryVertex = false;
     for(int neighbor: neighbors[vertex]) {
         if(!inGraph.Contains(neighbor)) {
             verticesToRemove.push_back(neighbor);
+        } else if(partitions[neighbor] != partition) {
+            isBoundaryVertex = true;
         }
     }
     for(int neighborToRemove : verticesToRemove) {
         neighbors[vertex].Remove(neighborToRemove);
     }
-
+    if(!isBoundaryVertex) {
+        boundaryVertices.Remove(vertex);
+    }
     profilingAddTimeUpdateNeighborhood(&profilingHelper, partitions[vertex]);
 }
 

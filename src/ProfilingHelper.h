@@ -19,10 +19,11 @@ struct ProfilingHelper_t {
 
     std::vector<std::vector<unsigned int>> timesUnsuccessfulFoldDegree; //partition
     std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesUnsuccessfulFoldAdjacentPerNeighborDegree; // partition, first neighbor degree
-    std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize; // partition, size of 2-neighborhood
+    std::vector<std::vector<unsigned int>> timesUnsuccessfulFoldWrongPartition; // partition,
     std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesSuccessfulFoldPerTwoNeighborhoodSize; // partition, size of 2-neighborhood
 
-    std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree; // partition, degree
+    std::vector<std::vector<unsigned int>> timesUnsuccessfulIsolatedCliquePartition;
+    std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesUnsuccessfulIsolatedCliqueDegreePerDegree; // partition, degree
     std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesUnsuccessfulIsolatedCliqueNoCliquePerDegree; // partition, degree
     std::vector<std::unordered_map<int, std::vector<unsigned int>>> timesSuccessfulIsolatedCliquePerDegree; // partition, degree
 };
@@ -57,7 +58,7 @@ namespace {
 		}
 	}
 
-	void printclock_tVector(std::vector<std::vector<unsigned int>> &vec, const char name[]) {
+	void printTimeVector(std::vector<std::vector<unsigned int>> &vec, const char name[]) {
 		std::cout << "#########################################################" << std::endl;
 		for(int partition = 0; partition < vec.size(); partition++) {
 			std::cout << name << "[" <<partition << "]:";
@@ -80,9 +81,10 @@ void profilingInit(ProfilingHelper_t *profilingHelper, std::vector<SparseArraySe
 	profilingHelper->timesUpdateNeighborhoodsPerDegree = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
 	profilingHelper->timesUnsuccessfulFoldDegree = std::vector<std::vector<unsigned int>>(numPartitions);
 	profilingHelper->timesUnsuccessfulFoldAdjacentPerNeighborDegree = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
-	profilingHelper->timesUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
+	profilingHelper->timesUnsuccessfulFoldWrongPartition = std::vector<std::vector<unsigned int>>(numPartitions);
 	profilingHelper->timesSuccessfulFoldPerTwoNeighborhoodSize = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
-	profilingHelper->timesUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
+	profilingHelper->timesUnsuccessfulIsolatedCliquePartition = std::vector<std::vector<unsigned int>>(numPartitions);
+	profilingHelper->timesUnsuccessfulIsolatedCliqueDegreePerDegree = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
 	profilingHelper->timesUnsuccessfulIsolatedCliqueNoCliquePerDegree = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
 	profilingHelper->timesSuccessfulIsolatedCliquePerDegree = std::vector<std::unordered_map<int, std::vector<unsigned int>>>(numPartitions);
 	profilingHelper->startTimersPerPartition = std::vector<struct timeval>(numPartitions);
@@ -124,8 +126,7 @@ void profilingAddTimeUnsuccessfulFoldAdjacent(ProfilingHelper_t *profilingHelper
 void profilingAddTimeUnsuccessfulFoldWrongPartition(ProfilingHelper_t *profilingHelper, int const partition) {
 	unsigned int time = getTime(&(profilingHelper->startTimersPerPartition[partition]));
 	int vertex = profilingHelper->currentVertexPartition[partition];
-	int NeighbordhoodSize = twoNeighbordhoodSize(profilingHelper, vertex);
-	addNewTime(profilingHelper->timesUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize[partition], NeighbordhoodSize, time);
+	profilingHelper->timesUnsuccessfulFoldWrongPartition[partition].push_back(time);
 }
 
 void profilingAddTimeSuccessfulFold(ProfilingHelper_t *profilingHelper, int const partition) {
@@ -135,11 +136,16 @@ void profilingAddTimeSuccessfulFold(ProfilingHelper_t *profilingHelper, int cons
 	addNewTime(profilingHelper->timesSuccessfulFoldPerTwoNeighborhoodSize[partition], NeighbordhoodSize, time);
 }
 
-void profilingAddTimeUnsuccessfulIsolatedCliqueDegreeOrPartition(ProfilingHelper_t *profilingHelper, int const partition) {
+void profilingAddTimeUnsuccessfulIsolatedCliqueDegree(ProfilingHelper_t *profilingHelper, int const partition) {
 	unsigned int time = getTime(&(profilingHelper->startTimersPerPartition[partition]));
 	int vertex = profilingHelper->currentVertexPartition[partition];
 	int degree = (*profilingHelper->neighborsPtr)[vertex].Size();
-	addNewTime(profilingHelper->timesUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree[partition], degree, time);
+	addNewTime(profilingHelper->timesUnsuccessfulIsolatedCliqueDegreePerDegree[partition], degree, time);
+}
+
+void profilingAddTimeUnsuccessfulIsolatedCliquePartition(ProfilingHelper_t *profilingHelper, int const partition) {
+	unsigned int time = getTime(&(profilingHelper->startTimersPerPartition[partition]));
+	profilingHelper->timesUnsuccessfulIsolatedCliquePartition[partition].push_back(time);
 }
 
 void profilingAddTimeUnsuccessfulIsolatedCliqueNoClique(ProfilingHelper_t *profilingHelper, int const partition) {
@@ -162,12 +168,13 @@ void profilingPrint(ProfilingHelper_t *profilingHelper) {
 
 	printVectorMapVector(profilingHelper->timesUpdateNeighborhoodsPerDegree, "UpdateNeighborhoodsPerDegree");
 
-	printclock_tVector(profilingHelper->timesUnsuccessfulFoldDegree, "UnsuccessfulFoldDegree");
+	printTimeVector(profilingHelper->timesUnsuccessfulFoldDegree, "UnsuccessfulFoldDegree");
 	printVectorMapVector(profilingHelper->timesUnsuccessfulFoldAdjacentPerNeighborDegree, "UnsuccessfulFoldAdjacentPerNeighborDegree");
-	printVectorMapVector(profilingHelper->timesUnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize, "UnsuccessfulFoldWrongPartitionPerTwoNeighborhoodSize");
+	printTimeVector(profilingHelper->timesUnsuccessfulFoldWrongPartition, "UnsuccessfulFoldWrongPartition");
 	printVectorMapVector(profilingHelper->timesSuccessfulFoldPerTwoNeighborhoodSize, "SuccessfulFoldPerTwoNeighborhoodSize");
 
-	printVectorMapVector(profilingHelper->timesUnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree, "UnsuccessfulIsolatedCliqueDegreeOrPartitionPerDegree");
+	printTimeVector(profilingHelper->timesUnsuccessfulIsolatedCliquePartition, "UnsuccessfulIsolatedCliquePartition");
+	printVectorMapVector(profilingHelper->timesUnsuccessfulIsolatedCliqueDegreePerDegree, "UnsuccessfulIsolatedCliqueDegreePerDegree");
 	printVectorMapVector(profilingHelper->timesUnsuccessfulIsolatedCliqueNoCliquePerDegree, "UnsuccessfulIsolatedCliqueNoCliquePerDegree");
 	printVectorMapVector(profilingHelper->timesSuccessfulIsolatedCliquePerDegree, "SuccessfulIsolatedCliquePerDegree");
 
@@ -185,7 +192,8 @@ struct ProfilingHelper_t {
 #define profilingAddTimeUnsuccessfulFoldAdjacent (void)sizeof
 #define profilingAddTimeUnsuccessfulFoldWrongPartition (void)sizeof
 #define profilingAddTimeSuccessfulFold (void)sizeof
-#define profilingAddTimeUnsuccessfulIsolatedCliqueDegreeOrPartition (void)sizeof
+#define profilingAddTimeUnsuccessfulIsolatedCliqueDegree (void)sizeof
+#define profilingAddTimeUnsuccessfulIsolatedCliquePartition (void)sizeof
 #define profilingAddTimeUnsuccessfulIsolatedCliqueNoClique (void)sizeof
 #define profilingAddTimeSuccessfulIsolatedClique (void)sizeof
 #define profilingPrint (void)sizeof
