@@ -102,9 +102,6 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
         }
         kaffpa(&N, weightsInt.data(), xadj.data(), NULL, adjncy.data(), &number_of_partitions, &imbalance, false, 1337, FASTSOCIAL, &edgecut, partitions.data());
         std::cout << "Edgecut: " << edgecut << std::endl;
-        for(int node = 0; node < N; ++node) {
-            partition_nodes[partitions[node]].push_back(node);
-        }
     } else {
 
 
@@ -166,11 +163,12 @@ void parallel_reductions::partitionGraph(int numPartitions, string partitioner, 
 
         inputfile.close();
         system("rm tmppartition");
-
-        for(int node = 0; node < N; ++node) {
+    }
+    for(int node = 0; node < N; ++node) {
+            assert(partitions[node] >= 0);
+            assert(partitions[node] < numPartitions);
             partition_nodes[partitions[node]].push_back(node);
         }
-    }
     std::cout << "Finished partitioning" << std::endl;
 }
 
