@@ -81,7 +81,7 @@ inline void configuration_mis::standard( MISConfig & mis_config ) {
     // KaHIP
     mis_config.partitioner                            = "kahip";
     mis_config.kahip_mode                             = FAST;
-    mis_config.weightType                             = VERTEX_WEIGHTS_DEGREE;
+    mis_config.weightType                             = VERTEX_WEIGHTS_ONE;
     // Randomization
     mis_config.seed                                   = 0;
     mis_config.imbalance                              = 0.03;
