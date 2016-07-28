@@ -23,7 +23,7 @@ for file in os.listdir(graphDir):
             targetFile = os.path.join(targetDir, str(numPartitions) + ".partition")
             if not os.path.exists(targetFile):
                 outputDumpFile = os.path.join(targetDir, "partition_output")
-                callString = "mpirun -n 16 ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress " + graphPath + " --k=" + str(numPartitions) + " --preconfiguration=ultrafast --seed 1337 > " + outputDumpFile
+                callString = "mpirun -n 16 ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress " + graphPath + " --k=" + str(numPartitions) + " --preconfiguration=ultrafast --seed 1337 >> " + outputDumpFile
                 print(callString)
                 subprocess.call(callString, shell=True)
                 outputFile = os.path.join(os.getcwd(), "tmppartition")
