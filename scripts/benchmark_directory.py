@@ -12,13 +12,10 @@ def makedir(path):
         if not os.path.isdir(path):
             raise
 
-partitionCall = "python partition_graphs.py " + graphDir
-print(partitionCall)
-subprocess.call(partitionCall, shell=True)
+print("#!/bin/bash")
 
 makeCall = "cd ../build; cmake .. -DCMAKE_BUILD_TYPE=Release; make -j48; cd ../scripts"
 print(makeCall)
-subprocess.call(makeCall, shell=True)
 
 for file in os.listdir(graphDir):
     if file.endswith(".graph"):
@@ -32,4 +29,3 @@ for file in os.listdir(graphDir):
         resultsFile = os.path.join(resultsDirWeightOne, file)
         benchmarkCall = "../build/benchmark " + graphPath + "  --partition_path=" + partitionsDirWeighOne + " --console_log --num_reps=" + numreps + " &> " + resultsFile
         print(benchmarkCall)
-        subprocess.call(benchmarkCall, shell=True)

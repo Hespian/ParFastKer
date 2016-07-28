@@ -12,6 +12,8 @@ def makedir(path):
         if not os.path.isdir(path):
             raise
 
+print("#!/bin/bash")
+
 for file in os.listdir(graphDir):
     if file.endswith(".graph"):
         graphPath = os.path.join(graphDir, file)
@@ -25,7 +27,7 @@ for file in os.listdir(graphDir):
                 outputDumpFile = os.path.join(targetDir, "partition_output")
                 callString = "mpirun -n 16 ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress " + graphPath + " --k=" + str(numPartitions) + " --preconfiguration=ultrafast --seed 1337 >> " + outputDumpFile
                 print(callString)
-                subprocess.call(callString, shell=True)
+                # os.system(callString)
                 outputFile = os.path.join(os.getcwd(), "tmppartition")
-                print("Renaming " + outputFile + " to " + targetFile)
+                # print("Renaming " + outputFile + " to " + targetFile)
                 os.rename(outputFile, targetFile)

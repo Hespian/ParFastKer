@@ -3,3 +3,5 @@ debug/*
 .tags
 .tags_sorted_by_file
 scripts/graphics
+scripts/partition_script.sh
+scripts/benchmark_script.sh
