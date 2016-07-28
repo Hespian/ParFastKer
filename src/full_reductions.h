@@ -11,7 +11,7 @@
 class full_reductions
 {
 public:
-	full_reductions(std::vector<std::vector<int>> &_adj, MISConfig &mis_config);
+	full_reductions(std::vector<std::vector<int>> &_adj, std::vector<int> _partitions);
 	void reduce_graph();
 	size_t get_current_is_size_with_folds();
 	size_t number_of_nodes_remaining();
@@ -20,9 +20,8 @@ public:
 	std::vector<int> getSolution();
 private:
 	std::vector<std::vector<int>> &adj;
-	MISConfig &mis_config;
+	std::vector<int> partitions;
 	std::vector<std::unique_ptr<parallel_reductions>> parallel_reducers;
-	std::unique_ptr<branch_and_reduce_algorithm> sequential_reducer;
 };
 
 

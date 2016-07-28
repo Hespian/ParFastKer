@@ -77,31 +77,21 @@ class configuration_mis {
 };
 
 inline void configuration_mis::standard( MISConfig & mis_config ) {
-    // KaHIP
-    mis_config.partitioner                            = "kahip";
-    mis_config.kahip_mode                             = FAST;
-    // Randomization
-    mis_config.seed                                   = 0;
-    mis_config.imbalance                              = 0.03;
-
-    mis_config.number_of_partitions                   = 4;
     // Reductions
     mis_config.all_reductions                         = true;
+    mis_config.num_reps                               = 5;
 }
 
 inline void configuration_mis::social( MISConfig & mis_config ) {
     standard(mis_config);
-    mis_config.kahip_mode                             = FASTSOCIAL;
 }
 
 inline void configuration_mis::full_standard( MISConfig & mis_config ) {
     standard(mis_config);
-    mis_config.number_of_partitions                   = 30;
 }
 
 inline void configuration_mis::full_social( MISConfig & mis_config ) {
     full_standard(mis_config);
-    mis_config.kahip_mode                             = FASTSOCIAL;
 }
 
 #endif 

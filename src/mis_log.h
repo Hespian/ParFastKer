@@ -53,11 +53,6 @@ class mis_log {
         void set_graph(graph_access & G);
 
         /**
-         * Write the log to a file.
-         */
-        void write_log();
-
-        /**
          * Add a newline to the log.
          */
         void print_newline();

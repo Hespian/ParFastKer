@@ -1,4 +1,5 @@
 build/*
+debug/*
 .tags
 .tags_sorted_by_file
 scripts/graphics

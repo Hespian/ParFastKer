@@ -2,12 +2,16 @@ cmake_minimum_required(VERSION 2.8.7)
 project(fast-reductions)
 
 # Define for not using preprocessing for the vertex fold reduction
-OPTION(NO_PREPROCESSING "Don't precompute two neighborhood of nodes to speed up the vertex fold reduction" OFF)
+OPTION(PROFILING "Add detailed timing of the reductions. This will affect the overall runtime and blow up the output" OFF)
 
-MESSAGE(STATUS "NO_PREPROCESSING? " ${NO_PREPROCESSING})
-IF(NO_PREPROCESSING)
-    ADD_DEFINITIONS(-DNO_PREPROCESSING)
-ENDIF(NO_PREPROCESSING)
+MESSAGE(STATUS "PROFILING? " ${PROFILING})
+IF(PROFILING)
+    ADD_DEFINITIONS(-DPROFILING)
+ENDIF(PROFILING)
+
+ADD_DEFINITIONS(-DUNSAFE_LONG)
+
+ADD_DEFINITIONS(-Wreturn-type)
 
 # Inlcude for some machines
 include_directories(/usr/include/mpi)
@@ -31,7 +35,6 @@ add_definitions(-std=c++11)
 
 set(OpenMP_CXX_FLAGS "${OpenMP_CXX_FLAGS} -fopenmp")
 add_definitions(${OpenMP_CXX_FLAGS})
-add_definitions(${CMAKE_CXX_FLAGS_RELEASE})
 
 # Add the test executable
 set(TEST_SOURCES ${SOURCES})
@@ -44,12 +47,6 @@ set(BENCHMARK_SOURCES ${SOURCES})
 list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correctness.cpp")
 list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
 add_executable(benchmark ${BENCHMARK_SOURCES})
-
-# Add the sequential benchmark executable
-set(SEQUENTIAL_BENCHMARK_SOURCES ${SOURCES})
-list(REMOVE_ITEM SEQUENTIAL_BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correctness.cpp")
-list(REMOVE_ITEM SEQUENTIAL_BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
-add_executable(sequential-benchmark ${SEQUENTIAL_BENCHMARK_SOURCES})
 
 # Additional include directories for libkahip
 include_directories(extern/KaHIP/lib/partition)
@@ -66,6 +63,3 @@ target_link_libraries(test_correctness gomp)
 target_link_libraries(benchmark argtable2)
 target_link_libraries(benchmark libkahip)
 target_link_libraries(benchmark gomp)
-target_link_libraries(sequential-benchmark argtable2)
-target_link_libraries(sequential-benchmark libkahip)
-target_link_libraries(sequential-benchmark gomp)
