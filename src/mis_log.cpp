@@ -76,15 +76,6 @@ void mis_log::set_graph(graph_access & G) {
     density = (double) (2 * number_of_edges) / (number_of_nodes * (number_of_nodes - 1));
 }
 
-void mis_log::write_log() {
-    std::stringstream filename_stream;
-    filename_stream << "./logs/log_"<<  log_config.graph_filename <<   
-                       "_seed_" <<  log_config.seed;
-    std::ofstream f(filename_stream.str());
-    f << filebuffer_string.str();
-    f.close();
-}
-
 void mis_log::print_newline() {
     filebuffer_string << std::endl; 
 
@@ -124,30 +115,16 @@ void mis_log::print_graph() {
 void mis_log::print_config() {
     filebuffer_string << "\t\tConfiguration"        << std::endl;
     filebuffer_string << "=========================================="                            << std::endl;
-    filebuffer_string << "Partitioner:\t\t\t"        << log_config.partitioner                   << std::endl;
-    filebuffer_string << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
-    filebuffer_string << "Weight type:\t\t\t"        << log_config.weightType                    << std::endl;
-    filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
-    filebuffer_string << "Base imbalance:\t\t\t"     << log_config.imbalance                     << std::endl;
-    filebuffer_string << "---"                       << std::endl;
     filebuffer_string << "Apply all reductions:\t\t" << log_config.all_reductions                << std::endl; 
     filebuffer_string << "---"                       << std::endl;
-    filebuffer_string << "No. of partitions:\t\t"    << log_config.number_of_partitions          << std::endl;
+    filebuffer_string << "Number of repititions\t\t" << log_config.num_reps                      << std::endl;
     filebuffer_string << std::endl;
     
     std::cout << "\t\tConfiguration"        << std::endl;
     std::cout << "=========================================="                            << std::endl;
-    std::cout << "Partitioner:\t\t\t"        << log_config.partitioner                   << std::endl;
-    std::cout << "KaHIP mode:\t\t\t"         << log_config.kahip_mode                    << std::endl;
-    std::cout << "Weight type:\t\t\t"        << log_config.weightType                    << std::endl;
-    std::cout << "---"                       << std::endl;
-    std::cout << "Seed:\t\t\t\t"             << log_config.seed                          << std::endl; 
-    std::cout << "Base imbalance:\t\t\t"     << log_config.imbalance                     << std::endl;
-    std::cout << "---"                       << std::endl;
     std::cout << "Apply all reductions:\t\t" << log_config.all_reductions                << std::endl;
     std::cout << "---"                       << std::endl;
-    std::cout << "No. of partitions:\t\t"    << log_config.number_of_partitions          << std::endl;
+    std::cout << "Number of repititions\t\t" << log_config.num_reps                      << std::endl;
     std::cout << std::endl;
 }
 

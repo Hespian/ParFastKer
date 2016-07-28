@@ -24,9 +24,10 @@ int main(int argn, char **argv) {
     
     MISConfig mis_config;
     std::string graph_filepath;
+    std::string partition_file;
 
     // Parse the command line parameters;
-    int ret_code = parse_parameters(argn, argv, mis_config, graph_filepath);
+    int ret_code = parse_parameters(argn, argv, mis_config, graph_filepath, partition_file);
     if (ret_code) {
         return 0;
     }
@@ -37,6 +38,7 @@ int main(int argn, char **argv) {
     graph_access G;
     graph_io::readGraphWeighted(G, graph_filepath);
     mis_log::instance()->set_graph(G);
+    graph_io::readPartition(G, partition_file);
     
     // Print setup information
     mis_log::instance()->print_graph();
@@ -54,7 +56,12 @@ int main(int argn, char **argv) {
         } endfor
     } endfor
 
-    std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, mis_config));
+    std::vector<int> partitions(G.number_of_nodes());
+    forall_nodes(G, node) {
+        partitions[node] = G.getPartitionIndex(node);
+    } endfor
+
+    std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
 
     full_reducer_parallel->reduce_graph();
 

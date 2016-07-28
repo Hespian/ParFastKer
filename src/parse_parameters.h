@@ -25,7 +25,6 @@
 #include <omp.h>
 
 #include "configuration_mis.h"
-#include "kernelizationDefinitions.h"
 
 /**
  * Parse the given parameters and apply them to the config.
@@ -39,20 +38,16 @@
  */
 int parse_parameters(int argn, char **argv,
                      MISConfig & mis_config,
-                     std::string & graph_filename) {
+                     std::string & graph_filename,
+                     std::string &partition_path) {
     const char *progname = argv[0];
 
     // Setup the argtable structs
     struct arg_lit *help                = arg_lit0(NULL, "help", "Print help.");
-    struct arg_int *user_seed           = arg_int0(NULL, "seed", NULL, "Seed to use for the PRNG.");
-    struct arg_str *user_conf           = arg_str0(NULL, "config", NULL, "Configuration to use. ([standard|social|full_standard|full_social]). Standard/social use different modes of the graph partitioning tool. Full configurations use more time consuming parameters.");
-    
-    struct arg_str *partitioner         = arg_str0(NULL, "partitioner", NULL, "Partitioner to use. ([kahip, parallel_kahip, lpa]).");
-    struct arg_int *kahip_mode          = arg_int0(NULL, "kahip_mode", NULL, "KaHIP mode to use.");
-    struct arg_int *num_partitions      = arg_int0(NULL, "num_partitions", NULL, "Number of partitions to use.");
-    struct arg_str *weightType         = arg_str0(NULL, "weight_type", NULL, "Vertex weights to use for partitioning. ([one, degree, degree_square]).");
 
     struct arg_str *filename            = arg_strn(NULL, NULL, "FILE", 1, 1, "Path to graph file.");
+    struct arg_str *partitions          = arg_str0(NULL, "partition_path", NULL, "Path to the partitions used for parallelization (whole directory for benchmark)");
+    struct arg_int *num_reps            = arg_int0(NULL, "num_reps", NULL, "Number of repititions to do for benchmarking");
     struct arg_str *output              = arg_str0(NULL, "output", NULL, "Path to store resulting independent set.");
     struct arg_lit *console_log         = arg_lit0(NULL, "console_log", "Stream the log into the console");
     struct arg_lit *disable_checks      = arg_lit0(NULL, "disable_checks", "Disable sortedness check during I/O.");
@@ -63,13 +58,9 @@ int parse_parameters(int argn, char **argv,
     void *argtable[] = {
             help, 
             filename, 
+            partitions,
+            num_reps,
             output,
-            user_seed, 
-            user_conf, 
-            partitioner,
-            kahip_mode,
-            num_partitions,
-            weightType,
             console_log,
             disable_checks,
             end
@@ -97,60 +88,17 @@ int parse_parameters(int argn, char **argv,
         return 1;
     }
 
-    if (user_conf->count > 0) {
-        if (strcmp(user_conf->sval[0], "standard") == 0) cfg.standard(mis_config);
-        else if (strcmp(user_conf->sval[0], "social") == 0) cfg.social(mis_config);
-        else if (strcmp(user_conf->sval[0], "full_standard") == 0) cfg.full_standard(mis_config);
-        else if (strcmp(user_conf->sval[0], "full_social") == 0) cfg.full_social(mis_config);
-    }
-
-    if (partitioner->count > 0) {
-        if (strcmp(partitioner->sval[0], "kahip") == 0) mis_config.partitioner = "kahip";
-        else if (strcmp(partitioner->sval[0], "parallel_kahip") == 0) mis_config.partitioner = "parallel_kahip";
-        else if (strcmp(partitioner->sval[0], "lpa") == 0) mis_config.partitioner = "lpa";
-    }
-
     if (filename->count > 0) {
         graph_filename = filename->sval[0];
     }   
 
-    if (kahip_mode->count > 0) {
-        mis_config.kahip_mode = kahip_mode->ival[0];
+    if (partitions->count > 0) {
+        partition_path = partitions->sval[0];
+    } 
+
+    if (num_reps->count > 0) {
+        mis_config.num_reps = num_reps->ival[0];
     }
-
-    if (num_partitions->count > 0) {
-        mis_config.number_of_partitions = num_partitions->ival[0];
-    }
-
-    if(weightType->count > 0) {
-        if (strcmp(weightType->sval[0], "one") == 0) mis_config.weightType = VERTEX_WEIGHTS_ONE;
-        else if (strcmp(weightType->sval[0], "degree") == 0) mis_config.weightType = VERTEX_WEIGHTS_DEGREE;
-        else if (strcmp(weightType->sval[0], "degree_square") == 0) mis_config.weightType = VERTEX_WEIGHTS_DEGREE_SQUARE;
-    }
-
-    if (user_seed->count > 0) {
-        mis_config.seed = user_seed->ival[0];
-    }
-
-    // if (use_multiway_ns->count > 0) {
-    //     mis_config.use_multiway_vc = false;
-    // }
-
-    // if (use_multiway_vc->count > 0) {
-    //     mis_config.use_multiway_vc = true;
-    // }
-
-    // if (use_hopcroft->count > 0) {
-    //     mis_config.use_hopcroft = true;
-    // }
-
-    // if (repetitions->count > 0) {
-    //     mis_config.repetitions = repetitions->ival[0];
-    // }
-
-    //if (best_degree_frac->count > 0) {
-        //mis_config.remove_fraction = best_degree_frac->dval[0];
-    //}
 
     if (console_log->count > 0) {
         mis_config.console_log = true;

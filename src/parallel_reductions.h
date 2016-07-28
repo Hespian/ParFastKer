@@ -19,10 +19,11 @@
 class parallel_reductions
 {
 public:
-    parallel_reductions(std::vector<std::vector<int>> const &adjacencyArray);
+    parallel_reductions(std::vector<std::vector<int>> const &adjacencyArray, std::vector<int> const &vertexPartitions);
     ~parallel_reductions();
 
-    void reduce_graph(int numPartitions, std::string partitioner, int const weightType);
+    void reduce_graph_parallel();
+    void reduce_graph_sequential();
 
     void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time);
     void UndoReductions(std::vector<Reduction> const &vReductions);
@@ -41,11 +42,9 @@ public:
 protected: // methods
     bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
-    void partitionGraph(int numPartitions, std::string partitioner, int const weightType);
     void initReducableVertices(int numPartitions);
     void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining);
-    std::vector<long> getVertexWeights(int const weightType);
     void updateAllNeighborhoods();
 
 protected: // members

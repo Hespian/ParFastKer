@@ -6,22 +6,23 @@
 #include "sequential/branch_and_reduce_algorithm.h"
 #include <omp.h>
 
-full_reductions::full_reductions(std::vector<std::vector<int>> &_adj, MISConfig &mis_config)
+full_reductions::full_reductions(std::vector<std::vector<int>> &_adj, std::vector<int> _partitions)
 : adj(_adj) 
-, mis_config(mis_config) {
+,partitions(_partitions) 
+{
 	parallel_reducers = std::vector<std::unique_ptr<parallel_reductions>>();
 }
 
 void full_reductions::reduce_graph() {
 	std::cout << "Creating object" << std::endl;
-	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj)));
+	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj, partitions)));
 	std::cout << "Finished creating object" << std::endl;
 	std::cout << "Before call to parallel reduce_graph" << std::endl;
-	parallel_reducers.back()->reduce_graph(mis_config.number_of_partitions, mis_config.partitioner, mis_config.weightType);
+	parallel_reducers.back()->reduce_graph_parallel();
 	std::cout << "After call to parallel reduce_graph" << std::endl;
 	std::cout << "Kernel size after parallel run: " << parallel_reducers.back()->size() << std::endl;
 	std::cout << "Before call to sequential reduce_graph" << std::endl;
-	parallel_reducers.back()->reduce_graph(1, mis_config.partitioner, mis_config.weightType);
+	parallel_reducers.back()->reduce_graph_sequential();
 	std::cout << "After call to sequential reduce_graph" << std::endl;
 	std::cout << "Kernel size after sequential run: " << parallel_reducers.back()->size() << std::endl;
 }

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <iostream>
 #include <argtable2.h>
+#include <dirent.h>
 
 #include "timer.h"
 // #include "ils/ils.h"
@@ -18,14 +19,21 @@
 #include "full_reductions.h"
 #include <memory>
 
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
 int main(int argn, char **argv) {
     mis_log::instance()->print_title();
     
     MISConfig mis_config;
     std::string graph_filepath;
+    std::string partitions_directory;
 
     // Parse the command line parameters;
-    int ret_code = parse_parameters(argn, argv, mis_config, graph_filepath);
+    int ret_code = parse_parameters(argn, argv, mis_config, graph_filepath, partitions_directory);
     if (ret_code) {
         return 0;
     }
@@ -55,12 +63,37 @@ int main(int argn, char **argv) {
     } endfor
     std::cout << "Finished creating graph" << std::endl;
 
-    std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, mis_config));
+    auto dir = opendir(partitions_directory.c_str());
+    std::vector<std::string> partition_files;
+    struct dirent *dp;
+    while ((dp = readdir(dir)) != NULL)
+       if(ends_with(dp->d_name, ".partition")) {
+        partition_files.push_back(dp->d_name);
+       }
+    (void)closedir(dir);
 
-    full_reducer_parallel->reduce_graph();
+    for(std::string partition_file: partition_files) {
+        std::cout << "---------------------------------------------------------------------" << std::endl;
+        std::cout << "Number of blocks: " << partition_file.substr(0, partition_file.find ('.')) << std::endl;
+        std::string partition_file_path = "";
+        partition_file_path += partitions_directory;
+        partition_file_path += "/";
+        partition_file_path += partition_file;
+        graph_io::readPartition(G, partition_file_path);
+        std::vector<int> partitions(G.number_of_nodes());
+        forall_nodes(G, node) {
+            partitions[node] = G.getPartitionIndex(node);
+        } endfor
 
-    auto is_base = full_reducer_parallel->get_current_is_size_with_folds();
-    mis_log::instance()->print_reduction(mis_config, is_base, full_reducer_parallel->number_of_nodes_remaining());
+        for(int i = 0; i < mis_config.num_reps; ++i) {
+            std::cout << "---------------------------------------------------------------------" << std::endl;
+            std::cout << "New repitition: " << i  << std::endl;
+            std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
+
+            full_reducer_parallel->reduce_graph();
+        }
+    }
+
 
     return 0;
 }

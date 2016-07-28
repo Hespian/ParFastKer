@@ -30,20 +30,12 @@
 struct MISConfig {
     // Name of the graph file.
     std::string graph_filename;
-    // Which partitioner to use
-    std::string partitioner;
+    // Directory containing partitions
+    std::string partition_directory;
     // Name of the output file.
     std::string output_filename;
-    // Seed for the RNG.
-    int seed;
-    // Imbalance. Used for the KaHIP-interface calls.
-    double imbalance;
-    // Mode for the KaHIP-framework.
-    unsigned int kahip_mode;
-    // Number of initial partitions to be constructed.
-    unsigned int number_of_partitions;
-    // Vertex weight to be used for partitioning
-    int weightType;
+    // Number of repititions for benchmark
+    int num_reps;
     // Write the log into a file
     bool print_log;
     // Write the inpendent set into a file
