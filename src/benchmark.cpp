@@ -18,6 +18,8 @@
 #include "sequential/branch_and_reduce_algorithm.h"
 #include "full_reductions.h"
 #include <memory>
+#include <iostream>
+#include <fstream>
 
 inline bool ends_with(std::string const & value, std::string const & ending)
 {
@@ -72,6 +74,9 @@ int main(int argn, char **argv) {
        }
     (void)closedir(dir);
 
+    std::vector<unsigned int> vertexTimes = std::vector<unsigned int>(G.number_of_nodes(),0);
+    std::cout << "INIT!!!" << std::endl;
+
     for(std::string partition_file: partition_files) {
         std::cout << "---------------------------------------------------------------------" << std::endl;
         std::cout << "Number of blocks: " << partition_file.substr(0, partition_file.find ('.')) << std::endl;
@@ -90,8 +95,20 @@ int main(int argn, char **argv) {
             std::cout << "New repitition: " << i  << std::endl;
             std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
 
-            full_reducer_parallel->reduce_graph();
+            full_reducer_parallel->reduce_graph(vertexTimes);
         }
+    }
+
+    std::ofstream outputFile(mis_config.graph_filename + "-workload_weights.weights");
+    if (outputFile.is_open()) {
+        for(int vertex = 0; vertex < G.number_of_nodes(); vertex++) {
+            outputFile << vertexTimes[vertex] + 1 << "\n";
+        }
+        outputFile.close();
+    }
+    else { 
+        std::cout << "Unable to open file";
+        exit(1);
     }
 
 

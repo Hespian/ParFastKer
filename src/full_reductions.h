@@ -12,7 +12,7 @@ class full_reductions
 {
 public:
 	full_reductions(std::vector<std::vector<int>> &_adj, std::vector<int> _partitions);
-	void reduce_graph();
+	void reduce_graph(std::vector<unsigned int> &vertexTimes);
 	size_t get_current_is_size_with_folds();
 	size_t number_of_nodes_remaining();
 	std::vector<std::vector<int>> getKernel();

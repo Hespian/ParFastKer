@@ -63,7 +63,8 @@ int main(int argn, char **argv) {
 
     std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
 
-    full_reducer_parallel->reduce_graph();
+    std::vector<unsigned int> temp;
+    full_reducer_parallel->reduce_graph(temp);
 
     auto is_base = full_reducer_parallel->get_current_is_size_with_folds();
     mis_log::instance()->print_reduction(mis_config, is_base, full_reducer_parallel->number_of_nodes_remaining());

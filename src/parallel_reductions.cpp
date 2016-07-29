@@ -2,6 +2,7 @@
 #include "ArraySet.h"
 #include "SparseArraySet.h"
 #include "ProfilingHelper.h"
+#include <sys/time.h>
 
 #include <vector>
 #include <set>
@@ -333,7 +334,7 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
     profilingAddTimeUpdateNeighborhood(&profilingHelper, partitions[vertex]);
 }
 
-void parallel_reductions::reduce_graph_parallel() {
+void parallel_reductions::reduce_graph_parallel(vector<unsigned int> &vertexTimes) {
     int numPartitions = partition_nodes.size();
     profilingInit(&profilingHelper, &neighbors, numPartitions);
 
@@ -361,7 +362,7 @@ void parallel_reductions::reduce_graph_parallel() {
                 remainingPerPartition[partition].Insert(vertex);
             }
         }
-        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition]);
+        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition], vertexTimes);
     }
 
 
@@ -406,7 +407,8 @@ void parallel_reductions::reduce_graph_sequential() {
             remaining.Insert(vertex);
         }
     }
-    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, time);
+    vector<unsigned int> temp(N,0);
+    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, time, temp);
 
 
     double endClock = omp_get_wtime();
@@ -425,7 +427,13 @@ void parallel_reductions::updateAllNeighborhoods() {
     cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time)
+unsigned int getTime(struct timeval *tBefore) {
+    struct timeval tAfter;
+    gettimeofday(&tAfter, NULL);
+    return ((tAfter.tv_sec - tBefore->tv_sec) * 1000000L + tAfter.tv_usec) - tBefore->tv_usec;
+}
+
+void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, vector<unsigned int> &vertexTimes)
 {
     double startClock = omp_get_wtime();
     int iterations(0);
@@ -434,6 +442,8 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
     std::cout << partition << ": Starting reductions..." << std::endl;
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());
+        struct timeval tBefore;
+        gettimeofday(&tBefore, NULL);
         remaining.Remove(vertex);
         assert(inGraph.Contains(vertex));
         assert(partitions[vertex] == partition);
@@ -442,6 +452,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         if (!reduction && m_bAllowVertexFolds) {
             reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
         }
+        vertexTimes[vertex] += getTime(&tBefore);
         iterations++;
         if(iterations % 1000000 == 0) {
             std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;

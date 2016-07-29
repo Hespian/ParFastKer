@@ -22,10 +22,10 @@ public:
     parallel_reductions(std::vector<std::vector<int>> const &adjacencyArray, std::vector<int> const &vertexPartitions);
     ~parallel_reductions();
 
-    void reduce_graph_parallel();
+    void reduce_graph_parallel(std::vector<unsigned int> &vertexTimes);
     void reduce_graph_sequential();
 
-    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time);
+    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, std::vector<unsigned int> &vertexTimes);
     void UndoReductions(std::vector<Reduction> const &vReductions);
     std::vector<std::vector<int>> getKernel();
     void applyKernelSolution(std::vector<int> kernel_solution);
