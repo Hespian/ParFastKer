@@ -17,15 +17,18 @@ print("#!/bin/bash")
 makeCall = "cd ../build; cmake .. -DCMAKE_BUILD_TYPE=Release; make -j48; cd ../scripts"
 print(makeCall)
 
-for file in os.listdir(graphDir):
-    if file.endswith(".graph"):
-        graphPath = os.path.join(graphDir, file)
-        partitionsDir = os.path.join(graphDir, "partitions", file)
-        partitionsDirWeighOne = os.path.join(partitionsDir, "weight_one")
-        allResultsdir = os.path.join(graphDir, "results")
-        makedir(allResultsdir)
-        resultsDirWeightOne = os.path.join(allResultsdir, "weight_one")
-        makedir(resultsDirWeightOne)
-        resultsFile = os.path.join(resultsDirWeightOne, file)
-        benchmarkCall = "../build/benchmark " + graphPath + "  --partition_path=" + partitionsDirWeighOne + " --console_log --num_reps=" + numreps + " &> " + resultsFile
-        print(benchmarkCall)
+for graphFile in os.listdir(graphDir):
+    if graphFile.endswith(".graph"):
+        graphPath = os.path.join(graphDir, graphFile)
+        partitionsDir = os.path.join(graphDir, "partitions", graphFile)
+        for weightPartitionDir in os.listdir(partitionsDir):
+            if weightPartitionDir.startswith("weight"):
+                partitionsDirPath = os.path.join(partitionsDir, weightPartitionDir)
+                allResultsdir = os.path.join(graphDir, "results")
+                makedir(allResultsdir)
+                resultsDirGraph = os.path.join(allResultsdir, graphFile)
+                makedir(resultsDirGraph)
+                resultsFile = os.path.join(resultsDirGraph, weightPartitionDir)
+                benchmarkCall = "../build/benchmark " + graphPath + "  --partition_path=" + partitionsDirPath + " --console_log --num_reps=" + numreps + " &> " + resultsFile
+                print("echo '" + benchmarkCall + "'")
+                print(benchmarkCall)
