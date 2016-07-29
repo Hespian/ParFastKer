@@ -31,6 +31,24 @@ def writeDegreeFile(inputFilePath, outputFilePath):
         inputFile.close()
         outputFile.close()
 
+def writeCustomWeightFile(graphFilePath, weightsFilePath, outputFilePath):
+    if not os.path.exists(outputFilePath):
+        graphFile = open(graphFilePath, "r")
+        weightsFile = open(weightsFilePath, "r")
+        outputFile = open(outputFilePath, "w")
+
+        header = graphFile.readline()
+        headerWords = header.split()
+        numVertices = headerWords[0]
+        numEdges = headerWords[1]
+        outputFile.write(numVertices + " " + numEdges + " 010\n")
+        for line in graphFile:
+            weight = weightsFile.readline().rstrip()
+            outputFile.write(str(weight) + " " + line)
+
+        graphFile.close()
+        outputFile.close()
+
 def partitionGraph(graphPath, targetDir):
     for numPartitions in numPartitionSet:
         targetFile = os.path.join(targetDir, str(numPartitions) + ".partition")
@@ -43,6 +61,13 @@ def partitionGraph(graphPath, targetDir):
             mvCall = "mv " + outputFile + " " + targetFile
             print("echo '" + mvCall + "'")
             print(mvCall)
+
+
+customWeightsDir = os.path.join(graphDir, "custom_weights")
+customWeightFiles = []
+for file in os.listdir(customWeightsDir):
+    if file.endswith(".weights"):
+        customWeightFiles.append(file)
 
 for file in os.listdir(graphDir):
     if file.endswith(".graph"):
@@ -61,8 +86,18 @@ for file in os.listdir(graphDir):
         makedir(targetDirWeighDegree)
         weightedGraphsDir = os.path.join(graphDir, "weighted")
         makedir(weightedGraphsDir)
-        weightedGraphFilePath = os.path.join(weightedGraphsDir, file) + "-weighted-degree.graph"
+        weightedGraphDegreeFilePath = os.path.join(weightedGraphsDir, file) + "-weighted-degree.graph"
 
-        writeDegreeFile(graphPath, weightedGraphFilePath)
-        partitionGraph(weightedGraphFilePath, targetDirWeighDegree)
+        writeDegreeFile(graphPath, weightedGraphDegreeFilePath)
+        partitionGraph(weightedGraphDegreeFilePath, targetDirWeighDegree)
+
+        # Custom weights
+        if file + ".weights" in customWeightFiles:
+            targetDirWeighCustom = os.path.join(partitionsDir, "weight_custom")
+            makedir(targetDirWeighCustom)
+            weightedGraphCustomFilePath = os.path.join(weightedGraphsDir, file) + "-weighted-custom.graph"
+            weightsFilePath = os.path.join(customWeightsDir, file + ".weights")
+            writeCustomWeightFile(graphPath, weightsFilePath, weightedGraphCustomFilePath)
+            partitionGraph(weightedGraphCustomFilePath, targetDirWeighCustom)
+
 
