@@ -348,6 +348,8 @@ void parallel_reductions::reduce_graph_parallel() {
     }
 
     vector<double> partitionTimes(numPartitions);
+    vector<int> numIsolatedCliqueReductions(numPartitions, 0);
+    vector<int> numVertexFoldReductions(numPartitions, 0);
     
     double startClock = omp_get_wtime();
 
@@ -361,7 +363,7 @@ void parallel_reductions::reduce_graph_parallel() {
                 remainingPerPartition[partition].Insert(vertex);
             }
         }
-        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition]);
+        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition]);
     }
 
 
@@ -371,6 +373,14 @@ void parallel_reductions::reduce_graph_parallel() {
 
     for(int partition = 0; partition< numPartitions; partition++) {
         cout << partition << ": Time spent applying reductions  : " << partitionTimes[partition] << endl;
+    }
+
+    for(int partition = 0; partition< numPartitions; partition++) {
+        cout << partition << ": Number of isolated clique reductions: " << numIsolatedCliqueReductions[partition]<< endl;
+    }
+
+    for(int partition = 0; partition< numPartitions; partition++) {
+        cout << partition << ": Number of vertex fold reductions: " << numVertexFoldReductions[partition]<< endl;
     }
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
@@ -395,6 +405,8 @@ void parallel_reductions::reduce_graph_sequential() {
     updateAllNeighborhoods();
 
     double time(0);
+    int numIsolatedCliqueReductions(0);
+    int numVertexFoldReductions(0);
     
     double startClock = omp_get_wtime();
 
@@ -406,7 +418,7 @@ void parallel_reductions::reduce_graph_sequential() {
             remaining.Insert(vertex);
         }
     }
-    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, time);
+    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, time, numIsolatedCliqueReductions, numVertexFoldReductions);
 
 
     double endClock = omp_get_wtime();
@@ -414,6 +426,8 @@ void parallel_reductions::reduce_graph_sequential() {
     profilingPrint(&profilingHelper);
 
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
+    cout << "Number of isolated clique reductions: " << numIsolatedCliqueReductions << endl;
+    cout << "Number of vertex fold reductions: " << numVertexFoldReductions << endl;
 }
 
 void parallel_reductions::updateAllNeighborhoods() {
@@ -425,12 +439,10 @@ void parallel_reductions::updateAllNeighborhoods() {
     cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time)
+void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, int &isolatedCliqueCount, int &foldedVertexCount)
 {
     double startClock = omp_get_wtime();
     int iterations(0);
-    int foldedVertexCount(0);
-    int isolatedCliqueCount(0);
     std::cout << partition << ": Starting reductions..." << std::endl;
     while (!remaining.Empty()) {
         int const vertex = *(remaining.begin());

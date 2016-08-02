@@ -25,7 +25,7 @@ public:
     void reduce_graph_parallel();
     void reduce_graph_sequential();
 
-    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time);
+    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, int &isolatedCliqueCount, int &foldedVertexCount);
     void UndoReductions(std::vector<Reduction> const &vReductions);
     std::vector<std::vector<int>> getKernel();
     void applyKernelSolution(std::vector<int> kernel_solution);
