@@ -4,7 +4,7 @@
 #include <vector>
 #include <utility>
 
-enum ReductionType {ISOLATED_VERTEX, FOLDED_VERTEX, DOMINATED_VERTEX, REMOVED_VERTEX, REMOVED_VERTEX_AND_NEIGHBORS};
+enum ReductionType {ISOLATED_VERTEX, FOLDED_VERTEX, DOMINATED_VERTEX, REMOVED_VERTEX, REMOVED_VERTEX_AND_NEIGHBORS, FOLDED_TWINS};
 
 class Reduction
 {
@@ -22,7 +22,14 @@ public:
         m_iVertex = vertex;
     }
 
+    void SetTwin(int const twin)
+    {
+        m_iTwin = twin;
+    }
+
     int GetVertex() const { return m_iVertex; }
+
+    int GetTwin() const { return m_iTwin; }
 
     void AddNeighbor(int const neighbor) {
         m_vNeighbors.push_back(neighbor);
@@ -47,6 +54,7 @@ public:
 
 private:
     int m_iVertex;
+    int m_iTwin;
     std::vector<int>                m_vNeighbors;
     std::vector<std::pair<int,int>> m_vRemovedEdges;
     ReductionType                   reductionType;

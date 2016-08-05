@@ -25,7 +25,7 @@ public:
     void reduce_graph_parallel();
     void reduce_graph_sequential();
 
-    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, int &isolatedCliqueCount, int &foldedVertexCount);
+    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount);
     void UndoReductions(std::vector<Reduction> const &vReductions);
     std::vector<std::vector<int>> getKernel();
     void applyKernelSolution(std::vector<int> kernel_solution);
@@ -40,6 +40,7 @@ public:
     void SetAllowVertexFolds(bool const allow) { m_bAllowVertexFolds = allow; }
 
 protected: // methods
+    bool removeTwin(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount);
     bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
     void initReducableVertices(int numPartitions);

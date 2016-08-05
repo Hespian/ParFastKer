@@ -31,6 +31,8 @@ parallel_time = {}
 parallel_size = {}
 num_isolated_clique_reductions = {}
 num_vertex_fold_reductions = {}
+num_twins_removed = {}
+num_twins_folded = {}
 sequential_time = {}
 num_blocks = 0
 num_reps = 0
@@ -46,6 +48,8 @@ for line in file:
 				time_per_block[num_blocks][block_num] /= num_reps
 				num_isolated_clique_reductions[num_blocks][block_num] /= num_reps
 				num_vertex_fold_reductions[num_blocks][block_num] /= num_reps
+				num_twins_removed[num_blocks][block_num] /= num_reps
+				num_twins_folded[num_blocks][block_num] /= num_reps
 			parallel_time[num_blocks] /= num_reps
 			parallel_size[num_blocks] /= num_reps
 			sequential_time[num_blocks] /= num_reps
@@ -64,6 +68,8 @@ for line in file:
 		time_per_block[num_blocks] = [0.0] * num_blocks
 		num_isolated_clique_reductions[num_blocks] = [0] * num_blocks
 		num_vertex_fold_reductions[num_blocks] = [0] * num_blocks
+		num_twins_removed[num_blocks] = [0] * num_blocks
+		num_twins_folded[num_blocks] = [0] * num_blocks
 		parallel_time[num_blocks] = 0
 		parallel_size[num_blocks] = 0
 		sequential_time[num_blocks] = 0
@@ -86,8 +92,16 @@ for line in file:
 			num_isolated_clique_reductions[num_blocks][block_num] += current_block_num_isolated_cliques
 		if "Number of vertex fold reductions:" in line:
 			block_num = int(words[0][:-1])
-			current_block_num_vertex folds = int(words[-1])
+			current_block_num_vertex_folds = int(words[-1])
 			num_vertex_fold_reductions[num_blocks][block_num] += current_block_num_vertex_folds
+		if "Number of twin reductions (removed)" in line:
+			block_num = int(words[0][:-1])
+			current_block_num_twins_removed = int(words[-1])
+			num_twins_removed[num_blocks][block_num] += current_block_num_twins_removed
+		if "Number of twin reductions (folded)" in line:
+			block_num = int(words[0][:-1])
+			current_block_num_twins_folded = int(words[-1])
+			num_twins_folded[num_blocks][block_num] += current_block_num_twins_folded
 		if "Time spent applying reductions" in line:
 			block_num = int(words[0][:-1])
 			time_per_block[num_blocks][block_num] += float(words[-1])
@@ -107,23 +121,37 @@ print(num_reps)
 
 sum_vertex_folds = [0] * len(sizes)
 sum_isolated_clique = [0] * len(sizes)
+sum_twins_removed = [0] * len(sizes)
+sum_twins_folded = [0] * len(sizes)
 for i in range(len(sizes)):
 	sum_vertex_folds[i] = sum(num_vertex_fold_reductions[sizes[i]])
 	sum_isolated_clique[i] = sum(num_isolated_clique_reductions[sizes[i]])
+	sum_twins_removed[i] = sum(num_twins_removed[sizes[i]])
+	sum_twins_folded[i] = sum(num_twins_folded[sizes[i]])
 index = np.arange(len(sizes))
 width = 0.75
 plt.figure(1)
-plt.subplot(211)
+plt.subplot(411)
 plt.bar(index, sum_vertex_folds, width, color="red")
 plt.xlabel('# Partitions')
 plt.ylabel('# Reductions')
 plt.title('Number of vertex fold reductions performed in parallel')
 plt.subplots_adjust(hspace = 0.5)
-plt.subplot(212)
+plt.subplot(412)
 plt.bar(index, sum_isolated_clique, width, color="red")
 plt.xlabel('# Partitions')
 plt.ylabel('# Reductions')
 plt.title('Number of isolated clique reductions performed in parallel')
+plt.subplot(413)
+plt.bar(index, sum_twins_removed, width, color="red")
+plt.xlabel('# Partitions')
+plt.ylabel('# Reductions')
+plt.title('Number of twin reductions (removed) performed in parallel')
+plt.subplot(414)
+plt.bar(index, sum_twins_folded, width, color="red")
+plt.xlabel('# Partitions')
+plt.ylabel('# Reductions')
+plt.title('Number of twin reductions (folded) performed in parallel')
 plt.xticks(index, sizes)
 plt.savefig(os.path.join(plotsDir, "num_reductions"))
 plt.clf()

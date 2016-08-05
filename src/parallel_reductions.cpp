@@ -14,13 +14,16 @@
 #include <sstream>
 #include "omp.h"
 #include <assert.h>
+#include <limits.h>
+#include <functional>
 
 #include "kaHIP_interface.h"
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
-#define REMOVE_NEIGHBOR(partition, neighbor, vertex) if(partition == partitions[neighbor]) {neighbors[neighbor].Remove(vertex);} else { assert(partition != partitions[neighbor]); neighborhoodChanged.Insert(neighbor);}
+// Remove vertex from inGraph first!
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) {if(partition == partitions[neighbor]) {neighbors[neighbor].Remove(vertex);} else { assert(partition != partitions[neighbor]); neighborhoodChanged.Insert(neighbor);}}
 
 using namespace std;
 
@@ -33,6 +36,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , neighborhoodChanged(adjacencyArray.size(), false)
  , boundaryVertices(adjacencyArray.size(), false)
  , partitions(vertexPartitions)
+ , independent_set(adjacencyArray.size(), -1)
 #ifdef TIMERS
  , replaceTimer(0)
  #endif // TIMERS
@@ -43,7 +47,6 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
     for (size_t u=0; u < N; ++u) {
         neighbors[u].InitializeFromAdjacencyArray(m_AdjacencyArray, u);
     }
-    independent_set.resize(m_AdjacencyArray.size());
     int numPartitions = *max_element(partitions.begin(), partitions.end()) + 1;
     partition_nodes = std::vector<std::vector<int>>(numPartitions);
     for(int node = 0; node < N; ++node) {
@@ -79,6 +82,7 @@ std::vector<std::vector<int>> parallel_reductions::getKernel() {
     int nodecount = 0;
     for(int node = 0; node < m_AdjacencyArray.size(); node++) {
         if(inGraph.Contains(node)) {
+            assert(independent_set[node] == -1);
             graph_to_kernel_map[node] = nodecount++;
         }
     }
@@ -218,6 +222,165 @@ bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int
     return true;
 }
 
+bool parallel_reductions::removeTwin(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount)
+{
+    assert(partitions[vertex] == partition);
+    assert(vMarkedVertices.size() == neighbors.size());
+    // This takes really long (it's O(n))
+    // assert(std::accumulate(vMarkedVertices.begin(), vMarkedVertices.end(), false, std::logical_or<bool>()) == false);
+    if(boundaryVertices.Contains(vertex))
+        return false;
+
+    if(neighbors[vertex].Size() != 3)
+        return false;
+
+    vector<int> markedVertices;
+
+    int smallestDegreeNeighbor = -1;
+    int smallesDegreeNeighborDegree = INT_MAX;
+    for(int neighbor: neighbors[vertex]) {
+        assert(partitions[neighbor] == partition);
+        assert(neighbor != vertex);
+        updateNeighborhood(neighbor);
+        vMarkedVertices[neighbor] = true;
+        markedVertices.push_back(neighbor);
+        int neighborDegree = neighbors[neighbor].Size();
+        if(neighborDegree < smallesDegreeNeighborDegree) {
+            smallesDegreeNeighborDegree = neighborDegree;
+            smallestDegreeNeighbor = neighbor;
+        }
+    }
+    assert(smallestDegreeNeighbor != -1);
+
+    int twin = -1;
+    for(int possibleTwin: neighbors[smallestDegreeNeighbor]) {
+        if(possibleTwin == vertex) continue;
+        if(partitions[possibleTwin] != partition) continue;
+        updateNeighborhood(possibleTwin);
+        if(neighbors[possibleTwin].Size() != 3) continue;
+        if(vMarkedVertices[possibleTwin]) continue;
+        assert(partitions[possibleTwin] == partitions[vertex]);
+        bool isTwin = true;
+        for(int twinNeighbor: neighbors[possibleTwin]) {
+            if(!vMarkedVertices[twinNeighbor]) {
+                isTwin = false;
+                break;
+            }
+        }
+        if(isTwin) {
+            twin = possibleTwin;
+            break;
+        }
+    }
+    if(twin == -1) {
+        for(int markedVertex: markedVertices) {
+            vMarkedVertices[markedVertex] = false;
+        }
+        return false;
+    }
+    assert(twin >= 0);
+    assert(neighbors[vertex].Equals(neighbors[twin]));
+    assert(partitions[twin] == partitions[vertex]);
+    assert(!boundaryVertices.Contains(twin));
+    assert(!neighbors[vertex].Contains(twin));
+
+    bool isNeighborhoodAdjacent = false;
+    for(int neighbor1: neighbors[vertex]) {
+        for(int neighbor2: neighbors[neighbor1]) {
+            if(vMarkedVertices[neighbor2]) {
+                isNeighborhoodAdjacent = true;
+                goto afterNeighborhoodCheck;
+            }
+        }
+    }
+afterNeighborhoodCheck:
+
+    bool reduced = false;
+    if(isNeighborhoodAdjacent) {
+        // Case where all vertices get removed from the graph and the twins get inserted into the independent set
+        for(int neighbor1: neighbors[vertex]) {
+            assert(partitions[neighbor1] == partition);
+            inGraph.Remove(neighbor1);
+            for(int neighbor2: neighbors[neighbor1]) {
+                if(neighbor2 != vertex && inGraph.Contains(neighbor2)) {
+                    REMOVE_NEIGHBOR(partition, neighbor2, neighbor1);
+                    INSERT_REMAINING(partition, remaining, neighbor2);
+                }
+            }
+            neighbors[neighbor1].Clear();
+            boundaryVertices.Remove(neighbor1);
+            remaining.Remove(neighbor1);
+            independent_set[neighbor1] = 1;
+        }
+        neighbors[vertex].Clear();
+        inGraph.Remove(vertex);
+        independent_set[vertex] = 0;
+        remaining.Remove(vertex);
+        neighbors[twin].Clear();
+        inGraph.Remove(twin);
+        independent_set[twin] = 0;
+        remaining.Remove(twin);
+        removedTwinCount++;
+        reduced = true;
+    } else {
+        // Case where the vertices get folded
+        bool twoNeighborHoodInSamePartition = isTwoNeighborhoodInSamePartition(vertex, partition, remaining);
+        if(!twoNeighborHoodInSamePartition) {
+            reduced = false;
+        } else {
+            Reduction reduction(FOLDED_TWINS);
+            reduction.SetVertex(vertex);
+            reduction.SetTwin(twin);
+            for(int neighbor: neighbors[vertex])
+                reduction.AddNeighbor(neighbor);
+
+            int neighborHoodSize(0);
+            for(int neighbor: reduction.GetNeighbors()) {
+                assert(partitions[neighbor] == partitions[twin]);
+                neighbors[neighbor].Remove(twin);
+                neighbors[neighbor].Remove(vertex);
+                neighborHoodSize += neighbors[neighbor].Size();
+            }
+            neighbors[twin].Clear();
+            neighbors[vertex].Clear();
+            neighbors[vertex].Resize(neighborHoodSize);
+            for(int neighbor1: reduction.GetNeighbors()) {
+                assert(!boundaryVertices.Contains(neighbor1));
+                for(int neighbor2: neighbors[neighbor1]) {
+                    assert(partitions[neighbor2] == partitions[neighbor1]);
+                    assert(neighbor2 != vertex);
+                    assert(neighbor2 != twin);
+                    assert(!vMarkedVertices[neighbor2]);
+                    neighbors[neighbor2].Remove(neighbor1);
+                    neighbors[vertex].Insert(neighbor2);
+                    neighbors[neighbor2].Insert(vertex);
+                    remaining.Insert(neighbor2);
+                }
+                neighbors[neighbor1].Clear();
+                inGraph.Remove(neighbor1);
+                boundaryVertices.Remove(neighbor1);
+                remaining.Remove(neighbor1);
+            }
+            inGraph.Remove(twin);
+            assert(!boundaryVertices.Contains(twin));
+            remaining.Remove(twin);
+            remaining.Insert(vertex);
+            vReductions.push_back(reduction);
+            assert(inGraph.Contains(vertex));
+            assert(!inGraph.Contains(reduction.GetNeighbors()[0]));
+            assert(!inGraph.Contains(reduction.GetNeighbors()[1]));
+            assert(!inGraph.Contains(reduction.GetNeighbors()[2]));
+            foldedTwinCount++;
+            reduced = true;
+        }
+    }
+
+    for(int markedVertex: markedVertices) {
+        vMarkedVertices[markedVertex] = false;
+    }
+    return reduced;
+}
+
 bool parallel_reductions::FoldVertex(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount)
 {
     assert(partitions[vertex] == partition);
@@ -308,8 +471,9 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 }
 
 void parallel_reductions::updateNeighborhood(int const vertex) {
-    if(!neighborhoodChanged.Contains(vertex))
+    if(!neighborhoodChanged.Contains(vertex)) {
         return;
+    }
     neighborhoodChanged.Remove(vertex);
 
     profilingStartClockUpdateNeighborhood(&profilingHelper, partitions[vertex], vertex);
@@ -350,6 +514,8 @@ void parallel_reductions::reduce_graph_parallel() {
     vector<double> partitionTimes(numPartitions);
     vector<int> numIsolatedCliqueReductions(numPartitions, 0);
     vector<int> numVertexFoldReductions(numPartitions, 0);
+    vector<int> numTwinReductionsRemoved(numPartitions, 0);
+    vector<int> numTwinReductionsFolded(numPartitions, 0);
     
     double startClock = omp_get_wtime();
 
@@ -363,7 +529,7 @@ void parallel_reductions::reduce_graph_parallel() {
                 remainingPerPartition[partition].Insert(vertex);
             }
         }
-        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition]);
+        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition]);
     }
 
 
@@ -381,6 +547,14 @@ void parallel_reductions::reduce_graph_parallel() {
 
     for(int partition = 0; partition< numPartitions; partition++) {
         cout << partition << ": Number of vertex fold reductions: " << numVertexFoldReductions[partition]<< endl;
+    }
+
+    for(int partition = 0; partition< numPartitions; partition++) {
+        cout << partition << ": Number of twin reductions (removed): " << numTwinReductionsRemoved[partition]<< endl;
+    }
+
+    for(int partition = 0; partition< numPartitions; partition++) {
+        cout << partition << ": Number of twin reductions (folded): " << numTwinReductionsFolded[partition]<< endl;
     }
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
@@ -407,6 +581,8 @@ void parallel_reductions::reduce_graph_sequential() {
     double time(0);
     int numIsolatedCliqueReductions(0);
     int numVertexFoldReductions(0);
+    int numTwinReductionsRemoved(0);
+    int numTwinReductionsFolded(0);
     
     double startClock = omp_get_wtime();
 
@@ -418,7 +594,7 @@ void parallel_reductions::reduce_graph_sequential() {
             remaining.Insert(vertex);
         }
     }
-    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, time, numIsolatedCliqueReductions, numVertexFoldReductions);
+    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, time, numIsolatedCliqueReductions, numVertexFoldReductions, numTwinReductionsRemoved, numTwinReductionsFolded);
 
 
     double endClock = omp_get_wtime();
@@ -428,6 +604,8 @@ void parallel_reductions::reduce_graph_sequential() {
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
     cout << "Number of isolated clique reductions: " << numIsolatedCliqueReductions << endl;
     cout << "Number of vertex fold reductions: " << numVertexFoldReductions << endl;
+    cout << "Number of twin reductions (removed): " << numTwinReductionsRemoved << endl;
+    cout << "Number of twin reductions (folded): " << numTwinReductionsFolded << endl;
 }
 
 void parallel_reductions::updateAllNeighborhoods() {
@@ -439,7 +617,7 @@ void parallel_reductions::updateAllNeighborhoods() {
     cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, int &isolatedCliqueCount, int &foldedVertexCount)
+void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount)
 {
     double startClock = omp_get_wtime();
     int iterations(0);
@@ -449,17 +627,21 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         remaining.Remove(vertex);
         assert(inGraph.Contains(vertex));
         assert(partitions[vertex] == partition);
+        assert(independent_set[vertex] == -1);
         updateNeighborhood(vertex);
         bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
         if (!reduction && m_bAllowVertexFolds) {
             reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
         }
+        if (!reduction) {
+            reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
+        }
         iterations++;
         if(iterations % 1000000 == 0) {
-            std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
+            std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction coint (folded): " << foldedTwinCount << std::endl;
         }
     }
-    std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << std::endl;
+    std::cout << partition << ": " << iterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count: " << removedTwinCount  << ", twin reduction coint (folded): " << foldedTwinCount  << std::endl;
     std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();
     time = (endClock - startClock);
@@ -535,6 +717,8 @@ void parallel_reductions::ApplyKernelSolutionToReductions(vector<Reduction> cons
                 }
             break;*/
             case FOLDED_VERTEX:
+                assert(independent_set[reduction.GetNeighbors()[0]] == -1);
+                assert(independent_set[reduction.GetNeighbors()[1]] == -1);
                 if(independent_set[reduction.GetVertex()] == 0) {
                     independent_set[reduction.GetNeighbors()[0]] = 0;
                     independent_set[reduction.GetNeighbors()[1]] = 0;
@@ -543,6 +727,26 @@ void parallel_reductions::ApplyKernelSolutionToReductions(vector<Reduction> cons
                     independent_set[reduction.GetNeighbors()[0]] = 1;
                     independent_set[reduction.GetNeighbors()[1]] = 1;
                     independent_set[reduction.GetVertex()] = 0;
+                }
+            break;
+            case FOLDED_TWINS:
+                assert(reduction.GetNeighbors().size() == 3);
+                assert(independent_set[reduction.GetNeighbors()[0]] == -1);
+                assert(independent_set[reduction.GetNeighbors()[1]] == -1);
+                assert(independent_set[reduction.GetNeighbors()[2]] == -1);
+                assert(independent_set[reduction.GetTwin()] == -1);
+                if(independent_set[reduction.GetVertex()] == 0) {
+                    independent_set[reduction.GetVertex()] = 1;
+                    independent_set[reduction.GetTwin()] = 1;
+                    independent_set[reduction.GetNeighbors()[0]] = 0;
+                    independent_set[reduction.GetNeighbors()[1]] = 0;
+                    independent_set[reduction.GetNeighbors()[2]] = 0;
+                } else {
+                    independent_set[reduction.GetVertex()] = 0;
+                    independent_set[reduction.GetTwin()] = 0;
+                    independent_set[reduction.GetNeighbors()[0]] = 1;
+                    independent_set[reduction.GetNeighbors()[1]] = 1;
+                    independent_set[reduction.GetNeighbors()[2]] = 1;
                 }
             break;
             default:

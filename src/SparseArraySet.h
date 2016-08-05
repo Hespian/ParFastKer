@@ -54,6 +54,7 @@ public:
 
     // Inserts are not allowed after saving state, as it is currently not supported.
     void Insert(int const x) {
+        assert(m_Elements.size() >= Size());
         if (Contains(x)) return;
         assert(!m_bRemoved); // not allowed to insert and remove when saving states
         if (!m_States.empty()) m_bInserted = true;
@@ -121,6 +122,18 @@ public:
     {
         m_iBegin = 0;
         m_iEnd = -1;
+    }
+
+    bool Equals(SparseArraySet &other) {
+        for(int element: other) {
+            if(!(this->Contains(element)))
+                return false;
+        }
+        for(int element: *this) {
+            if(!other.Contains(element))
+                return false;
+        }
+        return true;
     }
 
     static bool Test() {

@@ -137,6 +137,9 @@ int main(int argn, char **argv) {
                                 exit(1);
                             }
                     } endfor
+            } else if (full_reducer_sequential_test->y[node] == -1) {
+                std::cout <<  "Incomplete solution! "  << node <<  " not determined!" << std::endl;
+                exit(1);
             }
     } endfor
     std::cout <<  "valid"  << std::endl; 
