@@ -5,7 +5,7 @@ directory = sys.argv[1]
 filename = sys.argv[2]
 
 file = open(filename, "w")
-file.write("\\documentclass{article} \n")
+file.write("\\documentclass[varwidth=\\maxdimen, border=10pt]{standalone} \n")
 file.write("\\begin{document} \n")
 file.close()
 
@@ -20,4 +20,6 @@ for graphDirs in os.listdir(directory):
 file = open(filename, "a")
 file.write("\\end{document} \n")
 file.close()
+
+os.system("pdflatex -output-directory " + os.path.dirname(filename) + " " + filename)
 

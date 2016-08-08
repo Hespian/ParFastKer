@@ -211,11 +211,12 @@ if not latexFileName == None:
 	weight_string = os.path.basename(inputFile)
 	latexFile.write(graphName + " (" + numVerticesString + ", " + numEdgesString + ") " + weight_string.replace("_","\\_") + "\n")
 	latexFile.write("\\newline \n")
-	latexFile.write("\\begin{tabular}{l|rrr}\n")
-	latexFile.write("number of blocks & parallel run time & parallel kernel size & sequential run time \\\\ \n")
+	latexFile.write("\\begin{tabular}{l|rrrrrr|r}\n")
+	latexFile.write("number of blocks & parallel run time & parallel kernel size & vertex folds & isolated clique reductions & twin reductions (removed) & twin reductions (folded) & sequential run time \\\\ \n")
 	latexFile.write("\\hline \n")
 	for i in range(len(sizes)):
-		latexFile.write(str(sizes[i]) + " & " + str(round(parallel_times[i], 1)) + " & " + str(parallel_sizes[i]) + " & " + str(round(sequential_times[i], 1)) + "\\\\ \n")
+		latexFile.write(str(sizes[i]) + " & " + str(round(parallel_times[i], 1)) + " & " + str(int(parallel_sizes[i])) + " & " + str(int(sum_vertex_folds[i])) + " & " + str(int(sum_isolated_clique[i])) + " & " + str(int(sum_twins_removed[i])) + " & " + str(int(sum_twins_folded[i])) + " & " + str(round(sequential_times[i], 1)) + "\\\\ \n")
 
 	latexFile.write("\\end{tabular} \n")
+	latexFile.write("\\vspace{1cm} \n\\newline \n")
 	latexFile.close()
