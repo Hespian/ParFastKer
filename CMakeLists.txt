@@ -71,4 +71,4 @@ target_link_libraries(benchmark libkahip)
 target_link_libraries(benchmark gomp)
 target_link_libraries(sequential_benchmark argtable2)
 target_link_libraries(sequential_benchmark libkahip)
-target_link_libraries(sequential_benchmark gomp
+target_link_libraries(sequential_benchmark gomp)
