@@ -67,6 +67,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
     for(int partition = 0; partition < numPartitions; ++partition) {
         std::cout << partition << ": " << partition_nodes[partition].size() << " vertices" << std::endl;
     }
+    maximumMatching = MaximumMatching(neighbors);
     std::cout << "Finished constructor" << std::endl;
 }
 
@@ -587,6 +588,50 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     return true;
 }
 
+bool parallel_reductions::LPReduction() {
+    double startTime = omp_get_wtime();
+    maximumMatching.InitialMatching();
+    double initTime = omp_get_wtime();
+    maximumMatching.PPF();
+    double maximumMatchingTime = omp_get_wtime();
+    maximumMatching.MarkReachableVertices();
+    double markReachableVerticesTime = omp_get_wtime();
+    int N = neighbors.size();
+    bool changed = false;
+#pragma omp parallel for
+    for(int vertex = 0; vertex < N; ++vertex) {
+        if(maximumMatching.reachableVertices[vertex] == 0 && maximumMatching.reachableVertices[vertex + N] > 0) {
+            changed = true;
+            // vertex is in the vertex cover
+            independent_set[vertex] = 1;
+            inGraph.Remove(vertex);
+            for(int neighbor: neighbors[vertex]) {
+                neighborhoodChanged.Insert(vertex);
+            }
+            neighbors[vertex].Clear();
+        } else if (maximumMatching.reachableVertices[vertex] > 0 && maximumMatching.reachableVertices[vertex + N] == 0) {
+            changed = true;
+            // vertex is in the independent set
+            independent_set[vertex] = 0;
+            inGraph.Remove(vertex);
+            neighbors[vertex].Clear();
+        }
+        // else: We don't know it
+    }
+
+#pragma omp parallel for
+    for(int vertex = 0; vertex < N; ++vertex) {
+        updateNeighborhood(vertex);
+    }
+    double timeFinished = omp_get_wtime();
+    std::cout << "Time for initial matching: " << initTime - startTime << std::endl;
+    std::cout << "Time for finding maximum matching: " << maximumMatchingTime - initTime << std::endl;
+    std::cout << "Time for marking reachable vertices: " << markReachableVerticesTime - maximumMatchingTime << std::endl;
+    std::cout << "Time for modifying the graph: " << timeFinished - markReachableVerticesTime << std::endl;
+    std::cout << "Total time for LP reduction: " << timeFinished - startTime << std::endl;
+    return changed;
+}
+
 void parallel_reductions::updateNeighborhood(int const vertex) {
     if(!neighborhoodChanged.Contains(vertex)) {
         return;
@@ -615,6 +660,10 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
 }
 
 void parallel_reductions::reduce_graph_parallel() {
+
+    LPReduction();
+    return;
+
     int numPartitions = partition_nodes.size();
     profilingInit(&profilingHelper, &neighbors, numPartitions);
 
@@ -700,6 +749,7 @@ void parallel_reductions::reduce_graph_parallel() {
 }
 
 void parallel_reductions::reduce_graph_sequential() {
+    return;
     profilingInit(&profilingHelper, &neighbors, 1);
 
     int N = m_AdjacencyArray.size();

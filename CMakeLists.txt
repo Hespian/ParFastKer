@@ -48,6 +48,12 @@ list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correct
 list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
 add_executable(benchmark ${BENCHMARK_SOURCES})
 
+# Add the sequential benchmark executable
+set(SEQUENTIALBENCHMARK_SOURCES ${SOURCES})
+list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correctness.cpp")
+list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
+add_executable(sequential_benchmark ${SEQUENTIALBENCHMARK_SOURCES})
+
 # Additional include directories for libkahip
 include_directories(extern/KaHIP/lib/partition)
 include_directories(extern/KaHIP/lib/partition/uncoarsening/refinement/quotient_graph_refinement/flow_refinement)
@@ -63,3 +69,6 @@ target_link_libraries(test_correctness gomp)
 target_link_libraries(benchmark argtable2)
 target_link_libraries(benchmark libkahip)
 target_link_libraries(benchmark gomp)
+target_link_libraries(sequential_benchmark argtable2)
+target_link_libraries(sequential_benchmark libkahip)
+target_link_libraries(sequential_benchmark gomp

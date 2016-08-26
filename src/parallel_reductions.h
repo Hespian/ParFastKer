@@ -7,6 +7,7 @@
 #include "Reduction.h"
 #include "SimpleSet.h"
 #include "fast_set.h"
+#include "MaximumMatching.h"
 
 #include <vector>
 #include <map>
@@ -45,6 +46,7 @@ protected: // methods
     bool removeTwin(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount);
     bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
+    bool LPReduction();
     void initReducableVertices(int numPartitions);
     void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining);
@@ -62,6 +64,7 @@ protected: // members
     std::vector<std::vector<int>> partition_nodes;
     std::vector<ArraySet> inGraphPerPartition;
     SimpleSet boundaryVertices;
+    MaximumMatching maximumMatching;
 #ifdef TIMERS
     clock_t replaceTimer;
     #endif // TIMERS
