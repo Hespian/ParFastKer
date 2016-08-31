@@ -4,40 +4,31 @@
 #include "SparseArraySet.h"
 #include <vector>
 
+typedef struct /* the bipartite graph data structure */
+{
+	long n; // numver of vertices in both sides
+	long nrows; // number of vertices in the left side
+	long m; // number of edges
+	long* vtx_pointer; // an array of size n+1 storing the pointer in endV array
+    long* endV; //an array of size m that stores the second vertex of an edge.
+	double* weight; // not used in unweighted graph
+} graph;
+
+void free_graph (graph* bGraph);
+
 class MaximumMatching{
 public:
-	MaximumMatching();
-	MaximumMatching(std::vector<SparseArraySet> &_neighbors);
-	void InitialMatching();
-	void PPF();
-	void MarkReachableVertices();
+
+	MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray);
+	~MaximumMatching();
+	void LoadGraph(std::vector<SparseArraySet> &neighbors);
 
 	std::vector<int> reachableVertices;
 
 protected:
-	void MatchAndUpdate(int u);
-	int DFS_LA_TS(int startVertex, std::vector<int> &path);
-	int DFS_LA_TS_Reverse(int startVertex, std::vector<int> &path);
+	graph* g;
+	std::vector<long> degrees;
 
-	// Just for testing
-	bool IsMaximalMatching();
-	bool CheckUnmatchedLeft();
-	bool IsValidVertexCover();
-	bool CheckVertexCoverAndMatchingSize();
-
-	std::vector<SparseArraySet> *neighbors;
-	std::vector<int> MatchingMates;
-	std::vector<int> degree;
-	std::vector<int> unmatchedLeft;
-	std::vector<int> visited;
-	std::vector<int> deg1Vertices;
-	std::vector<int> tempUnmatchedVertices;
-	std::vector<int> lookAhead;
-	std::vector<int> nextNeighbor;
-	std::vector<int> nextNeighborLookAhead;
-	std::vector<std::vector<int>> augmentingPaths;
-	int N;
-	int numUnmatchedLeft;
 };
 
 #endif //MAXIMUM_MATCHING_H

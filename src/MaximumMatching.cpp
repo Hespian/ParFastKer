@@ -1,427 +1,82 @@
+#include <parallel/numeric>
 #include "MaximumMatching.h"
-#include <omp.h>
-#include <unordered_map>
-#include <utility>
 
-MaximumMatching::MaximumMatching(std::vector<SparseArraySet> &_neighbors) : neighbors(&_neighbors), N(_neighbors.size()) {
-	MatchingMates = std::vector<int>(2 * N);
-	degree = std::vector<int>(N);
-	unmatchedLeft = std::vector<int>(2 * N);
-	visited = std::vector<int>(2 * N);
-	deg1Vertices = std::vector<int>(N);
-	reachableVertices = std::vector<int>(2 * N);
-	tempUnmatchedVertices = std::vector<int>(2 * N);
-	lookAhead = std::vector<int>(2 * N);
-	nextNeighbor = std::vector<int>(2 * N);
-	nextNeighborLookAhead = std::vector<int> (2 * N);
-	long numThreads;
-#pragma omp parallel
-	{
-		numThreads = omp_get_num_threads();
+MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray) {
+	g = (graph *) malloc(sizeof(graph));
+	g->weight = NULL;
+	long numVertices = adjacencyArray.size();
+	g->vtx_pointer = new long[numVertices * 2 + 1];
+	degrees = std::vector<long>(numVertices * 2);
+	#pragma omp parallel for
+	for(int i = 0; i < numVertices; ++i ) {
+		degrees[i] = adjacencyArray[i].size();
+		degrees[i + numVertices] = adjacencyArray[i].size();
 	}
-	augmentingPaths = std::vector<std::vector<int>>(numThreads);
-	for(int i = 0; i < numThreads; i++)
-	{
-		augmentingPaths[i] = std::vector<int>(2 * N);
+	auto end_ptr = __gnu_parallel::partial_sum(degrees.begin(), degrees.end(), g->vtx_pointer);
+	assert(end_ptr == &(g->vtx_pointer[2 * numVertices]));
+	long numEdges = g->vtx_pointer[2 * numVertices - 1];
+	#pragma omp parallel for
+	for(int i = 0; i < 2 * numVertices; ++i ) {
+		g->vtx_pointer[i] -= degrees[i];
+	}
+	g->vtx_pointer[2 * numVertices] = numEdges;
+	assert(g->vtx_pointer[2 * numVertices] == g->vtx_pointer[2 * numVertices - 1] + degrees[2 * numVertices - 1]);
+	g->n = 2 * numVertices;
+	g->m = numEdges;
+	g->nrows = numVertices;
+	g->endV = new long[numEdges];
+	#pragma omp parallel for
+	for(int i = 0; i < numVertices; ++i) {
+		long index = g->vtx_pointer[i];
+		for(int neighbor: adjacencyArray[i]) {
+			g->endV[index++] = neighbor + numVertices;
+		}
+		index = g->vtx_pointer[i + numVertices];
+		for(int neighbor: adjacencyArray[i]) {
+			g->endV[index++] = neighbor;
+		}
 	}
 }
 
-MaximumMatching::MaximumMatching() {}
-
-void MaximumMatching::PPF() {    
-    
-#pragma omp parallel for default(shared)
-	for(int vertex = 0; vertex < 2 * N; vertex++)
-	{
-		lookAhead[vertex] = 0;
-		nextNeighborLookAhead[vertex] = -1;      
+void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors) {
+	assert(neighbors.size() == g->nrows);
+	#pragma omp parallel for
+	for(int i = 0; i < g->nrows; ++i ) {
+		degrees[i] = neighbors[i].Size();
+		degrees[i + g->nrows] = neighbors[i].Size();
 	}
-	
-	
-	int iterations = 0;
-    
-	while(1)
-	{
-		iterations++;
-		int numTempUnmatchedVertices = 0;
-		if(iterations % 2 == 1)
-		{
-#pragma omp parallel for schedule(static)
-			for(int vertex = 0; vertex < 2 * N; vertex++)
-			{
-				visited[vertex] = 0;
-				nextNeighbor[vertex] = -1;
-			}
-		}
-		else
-		{
-#pragma omp parallel for schedule(static)
-			for(int  vertex = 0; vertex < 2 * N; vertex++)
-			{
-				visited[vertex] = 0;
-				nextNeighbor[vertex] = (*neighbors)[vertex].Size();
-			}
-		}
-#pragma omp parallel for schedule(dynamic) default(shared)
-		for(int unmatchedVertexIndex = 0; unmatchedVertexIndex < numUnmatchedLeft; unmatchedVertexIndex++)
-		{
-			
-			long threadId = omp_get_thread_num();
-			assert(threadId < omp_get_num_threads());
-			std::vector<int> &augmentingPath = augmentingPaths[threadId];
-			int unmatchedVertex = unmatchedLeft[unmatchedVertexIndex];
-			assert(unmatchedVertex < N);
-			int augPathLen;
-			if(iterations % 2 == 1) // odd iterations
-				augPathLen = DFS_LA_TS(unmatchedVertex, augmentingPath) ;
-			else
-				augPathLen = DFS_LA_TS_Reverse(unmatchedVertex, augmentingPath) ;
-			if (augPathLen > 0)
-			{
-				assert(augPathLen % 2 == 0);
-				for(long k=0; k< augPathLen; k += 2)
-				{
-					MatchingMates[augmentingPath[k]] = augmentingPath[k+1];
-					MatchingMates[augmentingPath[k+1]] = augmentingPath[k];
-				}
-				
-			}
-			else
-			{
-				tempUnmatchedVertices[__sync_fetch_and_add(&numTempUnmatchedVertices,1)] = unmatchedVertex;
-			}
-			
-		}
-        if( (numTempUnmatchedVertices == 0) || (numUnmatchedLeft == numTempUnmatchedVertices))
-        {
-        	tempUnmatchedVertices.swap(unmatchedLeft);
-			numUnmatchedLeft = numTempUnmatchedVertices;
-            break;
-        }
-		tempUnmatchedVertices.swap(unmatchedLeft);
-		numUnmatchedLeft = numTempUnmatchedVertices;
+	auto end_ptr = __gnu_parallel::partial_sum(degrees.begin(), degrees.end(), g->vtx_pointer);
+	assert(end_ptr == &(g->vtx_pointer[g->n]));
+	long numEdges = g->vtx_pointer[g->n - 1];
+	#pragma omp parallel for
+	for(int i = 0; i < g->n; ++i ) {
+		g->vtx_pointer[i] -= degrees[i];
 	}
-	assert(CheckUnmatchedLeft());
-	assert(IsMaximalMatching());
+	g->vtx_pointer[g->n] = numEdges;
+	assert(g->vtx_pointer[g->n] == g->vtx_pointer[g->n - 1] + degrees[g->n - 1]);
+	g->m = numEdges;
+	
+	#pragma omp parallel for
+	for(int i = 0; i < g->nrows; ++i) {
+		long index = g->vtx_pointer[i];
+		for(int neighbor: neighbors[i]) {
+			g->endV[index++] = neighbor + g->nrows;
+		}
+		index = g->vtx_pointer[i + g->nrows];
+		for(int neighbor: neighbors[i]) {
+			g->endV[index++] = neighbor;
+		}
+	}
 }
 
-int MaximumMatching::DFS_LA_TS(int startVertex, std::vector<int> &path)
+MaximumMatching::~MaximumMatching() {
+	free_graph(g);
+	free(g);
+}
+
+void free_graph( graph* bGraph)
 {
-	
-	int top = -1;
-	assert(path.size() == 2 * N);
-	assert(startVertex >= 0);
-	assert(startVertex < N);
-	path[++top] = startVertex; // push , path is equivalent to stack
-	
-	while (top >= 0 )// while stack not empty
-	{
-		int u = path[top];
-		int uDegree = (*neighbors)[u].Size();
-		// lookahed part
-		while(++nextNeighborLookAhead[u] < uDegree)
-		{
-			int v = (*neighbors)[u][nextNeighborLookAhead[u]] + N;
-			if(__sync_fetch_and_add(&lookAhead[v],1) == 0)
-			{
-				if(MatchingMates[v] == -1)
-				{
-					__sync_fetch_and_add(&visited[v],1);
-					path[++top] = v; // push
-					return top+1; // top = augmenting path length
-					
-				}
-				
-			}
-		}
-		
-		while(++nextNeighbor[u] < uDegree)
-		{
-			
-			int v = (*neighbors)[u][nextNeighbor[u]] + N;
-			if(__sync_fetch_and_add(&visited[v],1) == 0)
-			{
-				if(MatchingMates[v] != -1) // means other vertex already allocate this in lookahed phase
-				{
-					
-					path[++top] = v; // push v
-					path[++top] = MatchingMates[v]; // push next u
-					break;
-					
-				}
-			}
-			
-		}
-		if(nextNeighbor[u] == uDegree)
-		{
-			top-= 2;// pop
-		}
-	}
-	return top+1;
-}
-
-
-
-
-
-// DFS with lookahead that finds a single augmenting path 
-// called from pothen-fan
-int MaximumMatching::DFS_LA_TS_Reverse(int startVertex, std::vector<int> &path)
-{
-	int top = -1;
-	assert(path.size() == 2 * N);
-	assert(startVertex >= 0);
-	assert(startVertex < N);
-	path[++top] = startVertex; // push , path is equivalent to stack 
-	
-	while (top >= 0 )// while stack not empty 
-	{
-		int u = path[top];
-		int uDegree = (*neighbors)[u].Size();
-		// lookahed part
-		while(++nextNeighborLookAhead[u] < uDegree)
-		{
-			int v = (*neighbors)[u][nextNeighborLookAhead[u]] + N;
-			if(__sync_fetch_and_add(&lookAhead[v],1) == 0)
-			{
-				if(MatchingMates[v] == -1)
-				{
-					__sync_fetch_and_add(&visited[v],1);
-					path[++top] = v; // push
-					return top+1; // top = augmenting path length
-					
-				}
-				
-			}
-		}
-		
-		while(--nextNeighbor[u] >= 0)
-		{
-			
-			int v = (*neighbors)[u][nextNeighbor[u]] + N;
-			if(__sync_fetch_and_add(&visited[v],1) == 0) 
-			{
-				if(MatchingMates[v] != -1) // means other vertex already allocate this in lookahed phase 
-				{
-					
-					path[++top] = v; // push v
-					path[++top] = MatchingMates[v]; // push next u
-					break;
-					
-				}
-			}
-			
-		}
-		if(nextNeighbor[u] == -1)
-		{
-			top-= 2;// pop
-		}
-		
-		
-	}
-	return top+1;
-}
-
-void MaximumMatching::MarkReachableVertices() {
-#pragma omp parallel for
-	for(int vertex = 0; vertex < N; ++vertex) {
-		reachableVertices[vertex] = 0;
-	}
-#pragma omp parallel for
-	for(int startVertex = 0; startVertex < N; ++startVertex) {
-		if(MatchingMates[startVertex] == -1) {
-			assert(reachableVertices[startVertex] == 0);
-			reachableVertices[startVertex] = 1;
-			long threadId = omp_get_thread_num();
-			std::vector<int> &stack = augmentingPaths[threadId];
-			int top = -1;
-			assert(stack.size() == 2 * N);
-			assert(startVertex >= 0);
-			assert(startVertex < N);
-			stack[++top] = startVertex;
-			
-			while (top >= 0 )
-			{
-				int vertex = stack[top];
-				top --;
-				int vertexDegree = (*neighbors)[vertex].Size();
-				assert(vertex < N);
-				for(int realNeighbor : (*neighbors)[vertex])
-				{
-					int neighbor = realNeighbor + N;
-					int matchingMate = MatchingMates[neighbor];
-					assert(matchingMate != -1);
-					assert(matchingMate < N);
-					if(neighbor == matchingMate)
-						continue;
-
-					if(__sync_fetch_and_add(&reachableVertices[neighbor],1) == 0) 
-					{
-						assert(reachableVertices[matchingMate] == 0);
-						reachableVertices[matchingMate] += 1;
-						assert(reachableVertices[matchingMate] == 1);
-						stack[++top] = matchingMate;
-						assert(top < 2 * N);
-					}
-					
-				}				
-			}
-		}
-	}
-	assert(IsValidVertexCover());
-	assert(CheckVertexCoverAndMatchingSize());
-}
-
-// Just for testing
-bool MaximumMatching::IsValidVertexCover() {
-
-	for(int vertex = 0; vertex < N; ++vertex) {
-		if(reachableVertices[vertex] != 0) {
-			for(int realneighbor : (*neighbors)[vertex]) {
-				int neighbor = realneighbor + N;
-				if(reachableVertices[neighbor] == 0)
-					return false;
-			}
-		}
-	}
-	return true;
-}
-
-// Just for testing
-bool MaximumMatching::CheckVertexCoverAndMatchingSize() {
-	int vertexCoverSize = 0;
-	for(int vertex = 0; vertex < N; ++vertex) {
-		if(reachableVertices[vertex] == 0) {
-			++vertexCoverSize;
-		}
-	}
-
-	for(int vertex = N; vertex < 2 * N; ++vertex) {
-		if(reachableVertices[vertex] > 0) {
-			++vertexCoverSize;
-		}
-	}
-
-	int matchingSize = 0;
-	for(int vertex = 0; vertex < N; ++vertex) {
-		if(MatchingMates[vertex] != -1) {
-			++matchingSize;
-		}
-	}
-
-	return vertexCoverSize == matchingSize;
-}
-
-void MaximumMatching::MatchAndUpdate(int u)
-{
-	if(__sync_fetch_and_add(&visited[u],1) != 0) return;	
-	for(int v : (*neighbors)[u])
-	{
-		if(__sync_fetch_and_add(&visited[v + N],1) == 0)
-		{
-			MatchingMates[u] = v + N;
-			MatchingMates[v + N] = u;
-			for(int nextNeighbor : (*neighbors)[v])
-			{
-				if( __sync_fetch_and_add(&degree[nextNeighbor],-1) == 2)
-				{					
-					MatchAndUpdate(nextNeighbor);
-				}		
-			}
-			break;
-		} 
-	}
-}
-
-
-void MaximumMatching::InitialMatching()
-{	
-	numUnmatchedLeft = 0;
-	
-	double startTime = omp_get_wtime();
-	
-#pragma omp parallel for default(shared) schedule(static)
-	for(int i=0; i < 2*N; i++)
-	{
-		visited[i] = 0;
-		MatchingMates[i] = -1;
-	}
-	
-	int degree1Count = 0;  
-	
-#pragma omp parallel for default(shared) schedule(static)
-	for(int u=0; u < N; u++)
-	{      
-		degree[u] = (*neighbors)[u].Size();
-		if(degree[u] == 1)
-		{
-			deg1Vertices[__sync_fetch_and_add(&degree1Count,1)] = u;
-		}
-	}
-	
-#pragma omp parallel for default(shared)
-	for(int u=0; u < degree1Count; u++)
-	{
-		MatchAndUpdate(deg1Vertices[u]);		  
-	}
-	
-#pragma omp parallel for default(shared) schedule(dynamic,100)
-	for(int u=0; u < N; u++)
-	{
-		if(visited[u] == 0 && degree[u]>0)
-			MatchAndUpdate(u);	  
-	}
-	
-#pragma omp parallel for default(shared) 
-	for(int u=0; u < N; u++)
-	{
-		
-		if(MatchingMates[u] == -1 && (*neighbors)[u].Size() > 0)
-		{
-			unmatchedLeft[__sync_fetch_and_add(&numUnmatchedLeft, 1)] = u;
-		}
-	}
-
-	double endTime = omp_get_wtime();
-	double totalTime = endTime - startTime;
-
-	assert(CheckUnmatchedLeft());
-	assert(IsMaximalMatching());
-}
-
-// Just for testing
-bool MaximumMatching::CheckUnmatchedLeft() {
-	std::vector<char> markedVertices(N, false);
-	for(int unmatchedVertexIndex = 0; unmatchedVertexIndex < numUnmatchedLeft; ++unmatchedVertexIndex) {
-		int unmatchedVertex = unmatchedLeft[unmatchedVertexIndex];
-		assert(unmatchedVertex < N);
-		markedVertices[unmatchedVertex] = true;
-	}
-
-	for(int vertex = 0; vertex < N; ++vertex) {
-		bool isUnmatched = MatchingMates[vertex] == -1;
-		if((*neighbors)[vertex].Size() > 0 && markedVertices[vertex] != isUnmatched)
-			return false;
-	}
-	return true;
-}
-
-// Just for testing
-bool MaximumMatching::IsMaximalMatching() {
-	for(int i = 0; i < numUnmatchedLeft; ++i) {
-		int vertex = unmatchedLeft[i];
-		for(int neighbor : (*neighbors)[vertex]) {
-			if(MatchingMates[neighbor + N] == -1) {
-				return false;
-			}
-		}
-	}
-	for(int i = 0; i < N; i++) {
-		if(MatchingMates[i] != -1) {
-			if(MatchingMates[MatchingMates[i]] != i) {
-				return false;
-			}
-		}
-	}
-	return true;
+	delete [] bGraph->vtx_pointer;
+	delete [] bGraph->endV;
+    if(bGraph->weight) delete [] bGraph->weight;
 }

@@ -38,6 +38,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , boundaryVertices(adjacencyArray.size(), false)
  , partitions(vertexPartitions)
  , independent_set(adjacencyArray.size(), -1)
+ , maximumMatching(adjacencyArray)
 #ifdef TIMERS
  , replaceTimer(0)
  #endif // TIMERS
@@ -67,7 +68,6 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
     for(int partition = 0; partition < numPartitions; ++partition) {
         std::cout << partition << ": " << partition_nodes[partition].size() << " vertices" << std::endl;
     }
-    maximumMatching = MaximumMatching(neighbors);
     std::cout << "Finished constructor" << std::endl;
 }
 
@@ -590,6 +590,10 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 
 bool parallel_reductions::LPReduction() {
     double startTime = omp_get_wtime();
+    maximumMatching.LoadGraph(neighbors);
+    double loadGraphTime = omp_get_wtime();
+    std::cout << "Time for loading the graph: " << loadGraphTime - startTime << std::endl;
+    /*double startTime = omp_get_wtime();
     maximumMatching.InitialMatching();
     double initTime = omp_get_wtime();
     maximumMatching.PPF();
@@ -629,7 +633,8 @@ bool parallel_reductions::LPReduction() {
     std::cout << "Time for marking reachable vertices: " << markReachableVerticesTime - maximumMatchingTime << std::endl;
     std::cout << "Time for modifying the graph: " << timeFinished - markReachableVerticesTime << std::endl;
     std::cout << "Total time for LP reduction: " << timeFinished - startTime << std::endl;
-    return changed;
+    return changed;*/
+    return false;
 }
 
 void parallel_reductions::updateNeighborhood(int const vertex) {
