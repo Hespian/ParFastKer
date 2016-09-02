@@ -592,14 +592,12 @@ bool parallel_reductions::LPReduction() {
     double startTime = omp_get_wtime();
     maximumMatching.LoadGraph(neighbors);
     double loadGraphTime = omp_get_wtime();
-    std::cout << "Time for loading the graph: " << loadGraphTime - startTime << std::endl;
-    /*double startTime = omp_get_wtime();
-    maximumMatching.InitialMatching();
+    maximumMatching.KarpSipserInit();
     double initTime = omp_get_wtime();
-    maximumMatching.PPF();
+    maximumMatching.MS_BFS_Graft();
     double maximumMatchingTime = omp_get_wtime();
     maximumMatching.MarkReachableVertices();
-    double markReachableVerticesTime = omp_get_wtime();
+    double markVerticesTime = omp_get_wtime();
     int N = neighbors.size();
     bool changed = false;
 #pragma omp parallel for
@@ -628,13 +626,13 @@ bool parallel_reductions::LPReduction() {
         updateNeighborhood(vertex);
     }
     double timeFinished = omp_get_wtime();
-    std::cout << "Time for initial matching: " << initTime - startTime << std::endl;
-    std::cout << "Time for finding maximum matching: " << maximumMatchingTime - initTime << std::endl;
-    std::cout << "Time for marking reachable vertices: " << markReachableVerticesTime - maximumMatchingTime << std::endl;
-    std::cout << "Time for modifying the graph: " << timeFinished - markReachableVerticesTime << std::endl;
-    std::cout << "Total time for LP reduction: " << timeFinished - startTime << std::endl;
-    return changed;*/
-    return false;
+    std::cout << "Time for loading the graph: " << loadGraphTime - startTime << std::endl;
+    std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
+    std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
+    std::cout << "Time for MarkReachableVertices: " << markVerticesTime - maximumMatchingTime << std::endl;
+    std::cout << "Time for applying result: " << timeFinished - markVerticesTime << std::endl;
+    std::cout << "Total time: " << timeFinished - startTime << std::endl;
+    return changed;
 }
 
 void parallel_reductions::updateNeighborhood(int const vertex) {

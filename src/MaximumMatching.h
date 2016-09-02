@@ -22,12 +22,35 @@ public:
 	MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray);
 	~MaximumMatching();
 	void LoadGraph(std::vector<SparseArraySet> &neighbors);
+	long* MS_BFS_Graft();
+	long KarpSipserInit();
+	void MarkReachableVertices();
 
 	std::vector<int> reachableVertices;
 
 protected:
-	graph* g;
-	std::vector<long> degrees;
+	void findMate(long u, graph* G, long* flag,long* mate, long* degree);
+
+	// Just for testing
+	bool IsValidVertexCover();
+	bool CheckVertexCoverAndMatchingSize();
+
+	graph* G;
+
+	long* QF;
+    long* QFnext;
+	long* flag;
+	long* parent;
+	long* leaf;
+    long* root;
+	long* mate;
+    long* unmatchedU;
+    long* nextUnmatchedU;
+
+    long * degree;
+	long* degree1Vtx;
+
+	std::vector<std::vector<long>> stacks;
 
 };
 
