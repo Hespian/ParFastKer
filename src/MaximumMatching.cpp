@@ -101,6 +101,7 @@ MaximumMatching::~MaximumMatching() {
 	free(root);
     free(unmatchedU);
     free(nextUnmatchedU);
+    free(mate);
 
 	free_graph(G);
 	free(G);
