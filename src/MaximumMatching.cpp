@@ -16,6 +16,7 @@ MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyA
 	}
 	auto end_ptr = __gnu_parallel::partial_sum(degree, degree + (G->n), (G->vtx_pointer) + 1);
 	assert(end_ptr == &(G->vtx_pointer[2 * numVertices]) + 1);
+	G->vtx_pointer[0] = 0;
 	long numEdges = G->vtx_pointer[2 * numVertices];
 	assert(G->vtx_pointer[2 * numVertices] == G->vtx_pointer[2 * numVertices - 1] + degree[2 * numVertices - 1]);
 	G->m = numEdges;
@@ -71,6 +72,7 @@ void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors) {
 	}
 	auto end_ptr = __gnu_parallel::partial_sum(degree, degree + (G->n), (G->vtx_pointer) + 1);
 	assert(end_ptr == &(G->vtx_pointer[G->n]) + 1);
+	G->vtx_pointer[0] = 0;
 	long numEdges = G->vtx_pointer[G->n];
 	G->vtx_pointer[G->n] = numEdges;
 	assert(G->vtx_pointer[G->n] == G->vtx_pointer[G->n - 1] + degree[G->n - 1]);
