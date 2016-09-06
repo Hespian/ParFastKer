@@ -121,8 +121,8 @@ long* MaximumMatching::MS_BFS_Graft ()
 	const long NE = G->m; // number of edges
 	const long NV = G->n; // numver of vertices in both sides
     const long nrows = G->nrows; // number of vertices in the left side
-	long * endVertex = G->endV; // adjacency
-	long * vtx_pointer = G->vtx_pointer; // adjacency pointer
+	long * __restrict__ endVertex = G->endV; // adjacency
+	long * __restrict__ vtx_pointer = G->vtx_pointer; // adjacency pointer
   
     double time_start = omp_get_wtime();
     

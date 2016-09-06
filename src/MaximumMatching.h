@@ -39,11 +39,11 @@ protected:
 
 	long* QF;
     long* QFnext;
-	long* flag;
-	long* parent;
-	long* leaf;
-    long* root;
-	long* mate;
+	long* __restrict__ flag;
+	long* __restrict__ parent;
+	long* __restrict__ leaf;
+    long* __restrict__ root;
+	long* __restrict__ mate;
     long* unmatchedU;
     long* nextUnmatchedU;
 
