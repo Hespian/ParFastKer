@@ -743,23 +743,30 @@ void parallel_reductions::reduce_graph_parallel() {
 
     LPReduction(remainingPerPartition, tempInt1PerPartition);
 
-    int sizeBefore = inGraph.Size();
-    #pragma omp parallel for
-    for(int partition = 0; partition < numPartitions; partition++) {
-        std::cout << partition << ": Filling remaining vertices set..." << std::endl;
-        remainingPerPartition[partition].Clear();
-        for (int const vertex : partition_nodes[partition]) {
-            if(inGraph.Contains(vertex)) {
-                assert(partitions[vertex] == partition);
-                remainingPerPartition[partition].Insert(vertex);
+    bool changed = true;
+    int numIterations = 0;
+    while(changed) {
+        int sizeBefore = inGraph.Size();
+        #pragma omp parallel for
+        for(int partition = 0; partition < numPartitions; partition++) {
+            std::cout << partition << ": Filling remaining vertices set..." << std::endl;
+            remainingPerPartition[partition].Clear();
+            for (int const vertex : partition_nodes[partition]) {
+                if(inGraph.Contains(vertex)) {
+                    assert(partitions[vertex] == partition);
+                    remainingPerPartition[partition].Insert(vertex);
+                }
             }
+            ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], tempInt1PerPartition[partition], tempInt2PerPartition[partition], fastSetPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition]);
         }
-        ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], tempInt1PerPartition[partition], tempInt2PerPartition[partition], fastSetPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition]);
-    }
-    int sizeAfter = inGraph.Size();
-    std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
+        int sizeAfter = inGraph.Size();
+        std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
 
-    LPReduction(remainingPerPartition, tempInt1PerPartition);
+        changed = LPReduction(remainingPerPartition, tempInt1PerPartition);
+        std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
+        numIterations++;
+    }
+    std::cout << "Num iterations: " << numIterations << std::endl;
 
 
     double endClock = omp_get_wtime();
