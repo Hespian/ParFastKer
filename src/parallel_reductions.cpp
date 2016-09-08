@@ -588,7 +588,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     return true;
 }
 
-void parallel_reductions::UpdateRemainingAndNeighborhoods(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition) {
+void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition) {
     int numPartitions = remainingPerPartition.size();
     #pragma omp parallel for
     for(int partition = 0; partition < numPartitions; ++partition) {
@@ -597,16 +597,14 @@ void parallel_reductions::UpdateRemainingAndNeighborhoods(vector<ArraySet> &rema
         int numVerticesRemoved = 0;
         for(int vertex: inGraphPerPartition[partition]) {
             assert(partitions[vertex] == partition);
+            if(!inGraph.Contains(vertex)) {
+                neighborhoodChanged.Remove(vertex);
+                assert(neighbors[vertex].Size() == 0);
+                remaining.Remove(vertex);
+                buffer[numVerticesRemoved++] = vertex;
+            }
             if(neighborhoodChanged.Contains(vertex)) {
-                if(inGraph.Contains(vertex)) {
-                    remaining.Insert(vertex);
-                    updateNeighborhood(vertex);
-                } else {
-                    neighborhoodChanged.Remove(vertex);
-                    assert(neighbors[vertex].Size() == 0);
-                    remaining.Remove(vertex);
-                    buffer[numVerticesRemoved++] = vertex;
-                }
+                remaining.Insert(vertex);
             }
         }
         for(int i = 0; i < numVerticesRemoved; ++i) {
@@ -618,9 +616,13 @@ void parallel_reductions::UpdateRemainingAndNeighborhoods(vector<ArraySet> &rema
 
 bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition) {
     int sizeBefore = inGraph.Size();
+    int N = neighbors.size();
     double startTime = omp_get_wtime();
-    UpdateRemainingAndNeighborhoods(remainingPerPartition, bufferPerPartition);
-    double updateRemainingAndNeighborhoodsBeforetime = omp_get_wtime();
+    #pragma omp parallel for
+    for(int vertex = 0; vertex < N; ++vertex) {
+        updateNeighborhood(vertex);
+    }
+    double updateNeighborhoodBeforetime = omp_get_wtime();
     maximumMatching.LoadGraph(neighbors);
     double loadGraphTime = omp_get_wtime();
     maximumMatching.KarpSipserInit();
@@ -629,7 +631,6 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     double maximumMatchingTime = omp_get_wtime();
     maximumMatching.MarkReachableVertices();
     double markVerticesTime = omp_get_wtime();
-    int N = neighbors.size();
     bool changed = false;
 #pragma omp parallel for
     for(int vertex = 0; vertex < N; ++vertex) {
@@ -640,7 +641,6 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
             // vertex is in the vertex cover
             independent_set[vertex] = 1;
             inGraph.Remove(vertex);
-            neighborhoodChanged.Insert(vertex);
             for(int neighbor: neighbors[vertex]) {
                 neighborhoodChanged.Insert(neighbor);
             }
@@ -650,25 +650,33 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
             // vertex is in the independent set
             independent_set[vertex] = 0;
             inGraph.Remove(vertex);
-            neighborhoodChanged.Insert(vertex);
             neighbors[vertex].Clear();
         }
         // else: We don't know it
     }
     double applyReductionTime = omp_get_wtime();
 
-    UpdateRemainingAndNeighborhoods(remainingPerPartition, bufferPerPartition);
-    double updateRemainingAndNeighborhoodsAftertime = omp_get_wtime();
+    UpdateRemaining(remainingPerPartition, bufferPerPartition);
+    double updateRemainingTime = omp_get_wtime();
+
+    #pragma omp parallel for
+    for(int vertex = 0; vertex < N; ++vertex) {
+        updateNeighborhood(vertex);
+    }
+
+    double updateNeighborhoodAfterTime = omp_get_wtime();
+
     int sizeAfter = inGraph.Size();
 
-    std::cout << "Time for UpdateRemainingAndNeighborhoods (before reduction): " << updateRemainingAndNeighborhoodsBeforetime - startTime << std::endl;
-    std::cout << "Time for loading the graph: " << loadGraphTime - updateRemainingAndNeighborhoodsBeforetime << std::endl;
+    std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - startTime << std::endl;
+    std::cout << "Time for loading the graph: " << loadGraphTime - updateNeighborhoodBeforetime << std::endl;
     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
     std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
     std::cout << "Time for MarkReachableVertices: " << markVerticesTime - maximumMatchingTime << std::endl;
     std::cout << "Time for applying result: " << applyReductionTime - markVerticesTime << std::endl;
-    std::cout << "Time for UpdateRemainingAndNeighborhoods (after reduction): " << updateRemainingAndNeighborhoodsAftertime - applyReductionTime << std::endl;
-    std::cout << "Total time: " << updateRemainingAndNeighborhoodsAftertime - startTime << std::endl;
+    std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingTime - applyReductionTime << std::endl;
+    std::cout << "Time for updating neighborshoods (after reduction): " << updateNeighborhoodAfterTime - updateRemainingTime << std::endl;
+    std::cout << "Total time: " << updateNeighborhoodAfterTime - startTime << std::endl;
     std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;
     return changed;
 }

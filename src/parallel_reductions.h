@@ -51,7 +51,7 @@ protected: // methods
     void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining);
     void updateAllNeighborhoods();
-    void UpdateRemainingAndNeighborhoods(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition);
+    void UpdateRemaining(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition);
 
 protected: // members
     std::vector<int> graph_to_kernel_map;
