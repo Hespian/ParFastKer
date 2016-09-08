@@ -618,6 +618,8 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     int sizeBefore = inGraph.Size();
     int N = neighbors.size();
     double startTime = omp_get_wtime();
+    UpdateRemaining(remainingPerPartition, bufferPerPartition);
+    double updateRemainingBeforeTime = omp_get_wtime();
     #pragma omp parallel for
     for(int vertex = 0; vertex < N; ++vertex) {
         updateNeighborhood(vertex);
@@ -657,7 +659,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     double applyReductionTime = omp_get_wtime();
 
     UpdateRemaining(remainingPerPartition, bufferPerPartition);
-    double updateRemainingTime = omp_get_wtime();
+    double updateRemainingAfterTime = omp_get_wtime();
 
     #pragma omp parallel for
     for(int vertex = 0; vertex < N; ++vertex) {
@@ -668,14 +670,15 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
 
     int sizeAfter = inGraph.Size();
 
-    std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - startTime << std::endl;
+    std::cout << "Time for UpdateRemaining (before reduction): " << updateNeighborhoodBeforetime - startTime << std::endl;
+    std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - updateNeighborhoodBeforetime << std::endl;
     std::cout << "Time for loading the graph: " << loadGraphTime - updateNeighborhoodBeforetime << std::endl;
     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
     std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
     std::cout << "Time for MarkReachableVertices: " << markVerticesTime - maximumMatchingTime << std::endl;
     std::cout << "Time for applying result: " << applyReductionTime - markVerticesTime << std::endl;
-    std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingTime - applyReductionTime << std::endl;
-    std::cout << "Time for updating neighborshoods (after reduction): " << updateNeighborhoodAfterTime - updateRemainingTime << std::endl;
+    std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingAfterTime - applyReductionTime << std::endl;
+    std::cout << "Time for updating neighborshoods (after reduction): " << updateNeighborhoodAfterTime - updateRemainingAfterTime << std::endl;
     std::cout << "Total time: " << updateNeighborhoodAfterTime - startTime << std::endl;
     std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;
     return changed;
