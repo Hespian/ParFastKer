@@ -670,8 +670,8 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
 
     int sizeAfter = inGraph.Size();
 
-    std::cout << "Time for UpdateRemaining (before reduction): " << updateNeighborhoodBeforetime - startTime << std::endl;
-    std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - updateNeighborhoodBeforetime << std::endl;
+    std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
+    std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - updateRemainingBeforeTime << std::endl;
     std::cout << "Time for loading the graph: " << loadGraphTime - updateNeighborhoodBeforetime << std::endl;
     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
     std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
