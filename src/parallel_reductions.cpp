@@ -603,7 +603,7 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
                 remaining.Remove(vertex);
                 buffer[numVerticesRemoved++] = vertex;
             }
-            if(neighborhoodChanged.Contains(vertex)) {
+            else if(neighborhoodChanged.Contains(vertex)) {
                 remaining.Insert(vertex);
             }
         }
