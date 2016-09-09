@@ -46,7 +46,7 @@ protected: // methods
     bool removeTwin(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount);
     bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
-    bool LPReduction(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition);
+    bool LPReduction(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition, int &numLPReductions);
     void initReducableVertices(int numPartitions);
     void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining);

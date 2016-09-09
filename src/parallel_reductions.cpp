@@ -196,10 +196,10 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
             }
             neighbors[neighbor].Clear();
         }
+        isolatedCliqueCount += neighbors[vertex].Size();
         neighbors[vertex].Clear();
 
         // vReductions.emplace_back(std::move(reduction));
-        isolatedCliqueCount++;
 
         profilingAddTimeSuccessfulIsolatedClique(&profilingHelper, partition);
         return true;
@@ -438,7 +438,7 @@ afterNeighborhoodCheck:
         REMOVE_VERTEX(partition, twin);
         independent_set[twin] = 0;
         remaining.Remove(twin);
-        removedTwinCount++;
+        removedTwinCount += 5;
         reduced = true;
     } else {
         // Case where the vertices get folded
@@ -488,7 +488,7 @@ afterNeighborhoodCheck:
             assert(!inGraph.Contains(reduction.GetNeighbors()[0]));
             assert(!inGraph.Contains(reduction.GetNeighbors()[1]));
             assert(!inGraph.Contains(reduction.GetNeighbors()[2]));
-            foldedTwinCount++;
+            foldedTwinCount += 4;
             reduced = true;
         }
     }
@@ -518,7 +518,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         return false; // neighbors can't be adjacent.
     }
 
-    foldedVertexCount++;
+    foldedVertexCount += 2;
 
     int const vertex1(neighbors[vertex][0]);
     int const vertex2(neighbors[vertex][1]);
@@ -614,7 +614,7 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
     }
 }
 
-bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition) {
+bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition, int &numLPReductions) {
     int sizeBefore = inGraph.Size();
     int N = neighbors.size();
     double startTime = omp_get_wtime();
@@ -670,7 +670,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
 
     int sizeAfter = inGraph.Size();
 
-    std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
+    /*std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
     std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - updateRemainingBeforeTime << std::endl;
     std::cout << "Time for loading the graph: " << loadGraphTime - updateNeighborhoodBeforetime << std::endl;
     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
@@ -680,7 +680,8 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingAfterTime - applyReductionTime << std::endl;
     std::cout << "Time for updating neighborshoods (after reduction): " << updateNeighborhoodAfterTime - updateRemainingAfterTime << std::endl;
     std::cout << "Total time: " << updateNeighborhoodAfterTime - startTime << std::endl;
-    std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;
+    std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;*/
+    numLPReductions += sizeBefore - sizeAfter;
     return changed;
 }
 
@@ -749,6 +750,7 @@ void parallel_reductions::reduce_graph_parallel() {
     vector<int> numTwinReductionsRemoved(numPartitions, 0);
     vector<int> numTwinReductionsFolded(numPartitions, 0);
     vector<int> removedUnconfinedVerticesCount(numPartitions, 0);
+    int numLPReductions = 0;
     
     double startClock = omp_get_wtime();
 
@@ -763,7 +765,7 @@ void parallel_reductions::reduce_graph_parallel() {
         }
     }
 
-    LPReduction(remainingPerPartition, tempInt1PerPartition);
+    LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
 
     bool changed = true;
     int numIterations = 0;
@@ -774,10 +776,10 @@ void parallel_reductions::reduce_graph_parallel() {
             ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], tempInt1PerPartition[partition], tempInt2PerPartition[partition], fastSetPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition]);
         }
         int sizeAfter = inGraph.Size();
-        std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
+        // std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
 
-        changed = LPReduction(remainingPerPartition, tempInt1PerPartition);
-        std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
+        changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+        // std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
         numIterations++;
     }
     std::cout << "Num iterations: " << numIterations << std::endl;
@@ -810,6 +812,8 @@ void parallel_reductions::reduce_graph_parallel() {
     for(int partition = 0; partition< numPartitions; partition++) {
         cout << partition << ": Number of unconfined vertices removed: " << removedUnconfinedVerticesCount[partition] << endl;
     }
+
+    cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
 
@@ -887,9 +891,9 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
     double startClock = omp_get_wtime();
     int dependencyCheckingIterations(0);
     int nonDependencyCheckingIterations(0);
-    std::cout << partition << ": Starting reductions..." << std::endl;
+    // std::cout << partition << ": Starting reductions..." << std::endl;
     while (!remaining.Empty()) {
-        std::cout << partition << ": Starting reductions with dependency checking..." << std::endl;
+        // std::cout << partition << ": Starting reductions with dependency checking..." << std::endl;
         while (!remaining.Empty()) {
             int const vertex = *(remaining.begin());
             remaining.Remove(vertex);
@@ -905,12 +909,12 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
                 reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
             }
             dependencyCheckingIterations++;
-            if(dependencyCheckingIterations % 1000000 == 0) {
+            /*if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
-            }
+            }*/
         }
-        std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
-        std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
+        // std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
+        // std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
         std::vector<int> verticesToRemove;
         for (int const vertex : inGraphPerPartition[partition]) {
             assert(partitions[vertex] == partition);
@@ -925,11 +929,11 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         for(int vertex : verticesToRemove) {
             inGraphPerPartition[partition].Remove(vertex);
         }
-        std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
+        // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
     }
-    std::cout << partition << ": Finished reductions!" << std::endl;
+    // std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();
-    time = (endClock - startClock);
+    time += (endClock - startClock);
 }
 
 void parallel_reductions::UndoReductions(vector<Reduction> const &vReductions)
