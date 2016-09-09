@@ -713,6 +713,13 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
 }
 
 void parallel_reductions::reduce_graph_parallel() {
+    long numThreads;
+    #pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+    std::cout << "num threads: " << numThreads << std::endl;
+
     int numPartitions = partition_nodes.size();
     profilingInit(&profilingHelper, &neighbors, numPartitions);
 
@@ -818,7 +825,12 @@ void parallel_reductions::reduce_graph_parallel() {
 }
 
 void parallel_reductions::reduce_graph_sequential() {
-    return;
+    long numThreads;
+    #pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+    omp_set_num_threads(1);
     profilingInit(&profilingHelper, &neighbors, 1);
 
     int N = m_AdjacencyArray.size();
@@ -851,8 +863,12 @@ void parallel_reductions::reduce_graph_sequential() {
     int numTwinReductionsRemoved(0);
     int numTwinReductionsFolded(0);
     int removedUnconfinedVerticesCount(0);
+    int numLPReductions(0);
     
     double startClock = omp_get_wtime();
+
+    vector<ArraySet> remainingPerPartition = {remaining};
+    vector<vector<int>> tempInt1PerPartition = {tempInt1};
 
     std::cout << "Filling remaining vertices set..." << std::endl;
     remaining.Clear();
@@ -862,10 +878,17 @@ void parallel_reductions::reduce_graph_sequential() {
             remaining.Insert(vertex);
         }
     }
-    ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, tempInt1, tempInt2, fastSet, time, numIsolatedCliqueReductions, numVertexFoldReductions, numTwinReductionsRemoved, numTwinReductionsFolded, removedUnconfinedVerticesCount);
 
+    bool changed = true;
+    int numIterations = 0;
+    while(changed) {
+        numIterations++;
+        ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, tempInt1, tempInt2, fastSet, time, numIsolatedCliqueReductions, numVertexFoldReductions, numTwinReductionsRemoved, numTwinReductionsFolded, removedUnconfinedVerticesCount);
+        changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+    }
 
     double endClock = omp_get_wtime();
+    std::cout << "Num iterations: " << numIterations << std::endl;
     AllReductions.push_back(ReductionsPerPartition);
     profilingPrint(&profilingHelper);
 
@@ -875,6 +898,8 @@ void parallel_reductions::reduce_graph_sequential() {
     cout << "Number of twin reductions (removed): " << numTwinReductionsRemoved << endl;
     cout << "Number of twin reductions (folded): " << numTwinReductionsFolded << endl;
     cout << "Number of unconfined vertices removed: " << removedUnconfinedVerticesCount << endl;
+    cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
+    omp_set_num_threads(numThreads);
 }
 
 void parallel_reductions::updateAllNeighborhoods() {
