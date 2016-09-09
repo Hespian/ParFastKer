@@ -18,6 +18,7 @@
 #include "sequential/branch_and_reduce_algorithm.h"
 #include "full_reductions.h"
 #include <memory>
+#include "omp.h"
 
 inline bool ends_with(std::string const & value, std::string const & ending)
 {
@@ -74,7 +75,9 @@ int main(int argn, char **argv) {
 
     for(std::string partition_file: partition_files) {
         std::cout << "---------------------------------------------------------------------" << std::endl;
-        std::cout << "Number of blocks: " << partition_file.substr(0, partition_file.find ('.')) << std::endl;
+        int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
+        std::cout << "Number of blocks: " << numPartitions << std::endl;
+        omp_set_num_threads(numPartitions);
         std::string partition_file_path = "";
         partition_file_path += partitions_directory;
         partition_file_path += "/";
