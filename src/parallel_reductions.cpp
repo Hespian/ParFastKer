@@ -224,7 +224,10 @@ bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int
     return true;
 }
 
-bool parallel_reductions::removeUnconfined(int const partition, int const vertex, ArraySet &remaining, fast_set &closedNeighborhood, vector<int> &neighborhood, vector<int> &numNeighborsInS, int &removedUnconfinedVerticesCount) {
+bool parallel_reductions::removeUnconfined(int const partition, int const vertex, ArraySet &remaining, fast_set &closedNeighborhood, vector<int> &neighborhood, vector<int> &numNeighborsInS, vector<int> &neighborsInS, int &removedUnconfinedVerticesCount, int &numDiamondReductions) {
+    assert(neighborhood.size() >= neighbors.size());
+    assert(numNeighborsInS.size() >= neighbors.size());
+    assert(neighborsInS.size() >= 2 * neighbors.size());
     closedNeighborhood.clear();
     closedNeighborhood.add(vertex);
     int sizeS = 1, sizeNeighborhood = 0;
@@ -291,17 +294,16 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
         }
     }
 
-    /*if (sizeS >= 2) {
-        markedVertices.clear();
-        for (int i = 0; i < sizeNeighborhood; i++) markedVertices.add(neighborhood[i]);
-            vector<int> vs(N * 2);
-        // vector<int> &vs = que;
+    if (sizeS >= 2) {
+        closedNeighborhood.clear();
+        int N = neighbors.size();
+        for (int i = 0; i < sizeNeighborhood; i++) closedNeighborhood.add(neighborhood[i]);
         for (int i = 0; i < sizeNeighborhood; i++) {
-            vs[i] = vs[N + i] = -1;
+            neighborsInS[i] = neighborsInS[N + i] = -1;
             int u = neighborhood[i];
             if (numNeighborsInS[u] != 2) continue;
             int v1 = -1, v2 = -1;
-            for (int w : neighbors[u]) if (!markedVertices.get(w)) {
+            for (int w : neighbors[u]) if (!closedNeighborhood.get(w)) {
                 if (v1 < 0) v1 = w;
                 else if (v2 < 0) v2 = w;
                 else {
@@ -314,29 +316,27 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
                 v1 = v2;
                 v2 = t;
             }
-            vs[i] = v1;
-            vs[N + i] = v2;
+            neighborsInS[i] = v1;
+            neighborsInS[N + i] = v2;
         }
-        for (int i = 0; i < sizeNeighborhood; i++) if (vs[i] >= 0 && vs[N + i] >= 0) {
+        for (int i = 0; i < sizeNeighborhood; i++) if (neighborsInS[i] >= 0 && neighborsInS[N + i] >= 0) {
             int u = neighborhood[i];
-            markedVertices.clear();
-            for (int w : neighbors[u]) markedVertices.add(w);
-            for (int j = i + 1; j < sizeNeighborhood; j++) if (vs[i] == vs[j] && vs[N + i] == vs[N + j] && !markedVertices.get(neighborhood[j])) {
+            closedNeighborhood.clear();
+            for (int w : neighbors[u]) closedNeighborhood.add(w);
+            for (int j = i + 1; j < sizeNeighborhood; j++) if (neighborsInS[i] == neighborsInS[j] && neighborsInS[N + i] == neighborsInS[N + j] && !closedNeighborhood.get(neighborhood[j])) {
                 // Vertex is unconfined
                 independent_set[vertex] = 1;
-                REMOVE_VERTEX(partition, vertex);
-                assert(!boundaryVertices.Contains(vertex));
+                inGraph.Remove(vertex);
                 for(int neighbor: neighbors[vertex]) {
                     REMOVE_NEIGHBOR(partition, neighbor, vertex);
                     INSERT_REMAINING(partition, remaining, neighbor);              }
                 neighbors[vertex].Clear();
                 remaining.Remove(vertex);
-                ++removedUnconfinedVerticesCount;
-                cout << "SECOND" << endl;
+                ++numDiamondReductions;
                 return true;
             }
         }
-    }*/
+    }
     return false;
 }
 
@@ -729,6 +729,7 @@ void parallel_reductions::reduce_graph_parallel() {
     vector<vector<int>> tempInt1PerPartition(numPartitions);
     vector<vector<int>> tempInt2PerPartition(numPartitions);
     vector<fast_set> fastSetPerPartition(numPartitions, fast_set(0));
+    vector<vector<int>> tempIntDoubleSizePerPartition(numPartitions);
     vector<ArraySet> remainingPerPartition(numPartitions);
     vector<vector<Reduction>> ReductionsPerPartition = vector<vector<Reduction>>(numPartitions);
     for(int partition = 0; partition < numPartitions; partition++) {
@@ -743,6 +744,8 @@ void parallel_reductions::reduce_graph_parallel() {
         tempInt2PerPartition[partition] = tempInt2;
         fast_set fastSet(m_AdjacencyArray.size());
         fastSetPerPartition[partition] = fastSet;
+        vector<int> tempIntDoubleSize = vector<int>(m_AdjacencyArray.size() * 2);
+        tempIntDoubleSizePerPartition[partition] = tempIntDoubleSize;
         for (int const vertex : partition_nodes[partition]) {
             if(inGraph.Contains(vertex)) {
                 assert(partitions[vertex] == partition);
@@ -757,6 +760,8 @@ void parallel_reductions::reduce_graph_parallel() {
     vector<int> numTwinReductionsRemoved(numPartitions, 0);
     vector<int> numTwinReductionsFolded(numPartitions, 0);
     vector<int> removedUnconfinedVerticesCount(numPartitions, 0);
+    vector<int> numDiamondReductions(numPartitions, 0);
+
     int numLPReductions = 0;
     
     double startClock = omp_get_wtime();
@@ -780,7 +785,7 @@ void parallel_reductions::reduce_graph_parallel() {
         int sizeBefore = inGraph.Size();
         #pragma omp parallel for
         for(int partition = 0; partition < numPartitions; partition++) {
-            ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], tempInt1PerPartition[partition], tempInt2PerPartition[partition], fastSetPerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition]);
+            ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerPartition[partition], remainingPerPartition[partition], tempInt1PerPartition[partition], tempInt2PerPartition[partition], fastSetPerPartition[partition], tempIntDoubleSizePerPartition[partition], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition], numDiamondReductions[partition]);
         }
         int sizeAfter = inGraph.Size();
         // std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
@@ -820,6 +825,10 @@ void parallel_reductions::reduce_graph_parallel() {
         cout << partition << ": Number of unconfined vertices removed: " << removedUnconfinedVerticesCount[partition] << endl;
     }
 
+    for(int partition = 0; partition< numPartitions; partition++) {
+        cout << partition << ": Number of diamond reductions: " << numDiamondReductions[partition] << endl;
+    }
+
     cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
 }
@@ -839,6 +848,7 @@ void parallel_reductions::reduce_graph_sequential() {
     std::vector<bool> vMarkedVertices = std::vector<bool>(m_AdjacencyArray.size(), false);
     vector<int> tempInt1 = vector<int>(m_AdjacencyArray.size());
     vector<int> tempInt2 = vector<int>(m_AdjacencyArray.size());
+    vector<int> tempIntDoubleSize = vector<int>(m_AdjacencyArray.size() * 2);
     fast_set fastSet(m_AdjacencyArray.size());
     ArraySet remaining = ArraySet(N);
 
@@ -864,6 +874,7 @@ void parallel_reductions::reduce_graph_sequential() {
     int numTwinReductionsFolded(0);
     int removedUnconfinedVerticesCount(0);
     int numLPReductions(0);
+    int numDiamondReductions(0);
     
     double startClock = omp_get_wtime();
 
@@ -883,7 +894,7 @@ void parallel_reductions::reduce_graph_sequential() {
     int numIterations = 0;
     while(changed) {
         numIterations++;
-        ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, tempInt1, tempInt2, fastSet, time, numIsolatedCliqueReductions, numVertexFoldReductions, numTwinReductionsRemoved, numTwinReductionsFolded, removedUnconfinedVerticesCount);
+        ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, tempInt1, tempInt2, fastSet, tempIntDoubleSize, time, numIsolatedCliqueReductions, numVertexFoldReductions, numTwinReductionsRemoved, numTwinReductionsFolded, removedUnconfinedVerticesCount, numDiamondReductions);
         changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
     }
 
@@ -898,6 +909,7 @@ void parallel_reductions::reduce_graph_sequential() {
     cout << "Number of twin reductions (removed): " << numTwinReductionsRemoved << endl;
     cout << "Number of twin reductions (folded): " << numTwinReductionsFolded << endl;
     cout << "Number of unconfined vertices removed: " << removedUnconfinedVerticesCount << endl;
+    cout << "Number of diamond reductions: " << numDiamondReductions << endl;
     cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
     omp_set_num_threads(numThreads);
 }
@@ -911,7 +923,7 @@ void parallel_reductions::updateAllNeighborhoods() {
     cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
 }
 
-void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, vector<int> &tempInt1, vector<int> &tempInt2, fast_set &fastSet, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount)
+void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, vector<int> &tempInt1, vector<int> &tempInt2, fast_set &fastSet, vector<int> &tempIntDoubleSize, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount, int &numDiamondReductions)
 {
     double startClock = omp_get_wtime();
     int dependencyCheckingIterations(0);
@@ -944,7 +956,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         for (int const vertex : inGraphPerPartition[partition]) {
             assert(partitions[vertex] == partition);
             if(inGraph.Contains(vertex)) {
-                bool reduction = removeUnconfined(partition, vertex, remaining, fastSet, tempInt1, tempInt2, removedUnconfinedVerticesCount);
+                bool reduction = removeUnconfined(partition, vertex, remaining, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
                 if(reduction) {
                     verticesToRemove.push_back(vertex);
                 }

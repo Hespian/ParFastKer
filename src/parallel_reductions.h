@@ -27,7 +27,7 @@ public:
     void reduce_graph_parallel();
     void reduce_graph_sequential();
 
-    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, std::vector<int> &tempInt1, std::vector<int> &tempInt2, fast_set &fastSet, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount);
+    void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, std::vector<int> &tempInt1, std::vector<int> &tempInt2, fast_set &fastSet, std::vector<int> &tempIntDoubleSize, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount, int &numDiamondReductions);
     void UndoReductions(std::vector<Reduction> const &vReductions);
     std::vector<std::vector<int>> getKernel();
     void applyKernelSolution(std::vector<int> kernel_solution);
@@ -42,7 +42,7 @@ public:
     void SetAllowVertexFolds(bool const allow) { m_bAllowVertexFolds = allow; }
 
 protected: // methods
-    bool removeUnconfined(int const partition, int const vertex, ArraySet &remaining, fast_set &closedNeighborhood, std::vector<int> &neighborhood, std::vector<int> &numNeighborsInS, int &removedUnconfinedVerticesCount);
+    bool removeUnconfined(int const partition, int const vertex, ArraySet &remaining, fast_set &closedNeighborhood, std::vector<int> &neighborhood, std::vector<int> &numNeighborsInS, std::vector<int> &neighborsInS, int &removedUnconfinedVerticesCount, int &numDiamondReductions);
     bool removeTwin(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount);
     bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
