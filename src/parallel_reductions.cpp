@@ -196,7 +196,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
             }
             neighbors[neighbor].Clear();
         }
-        isolatedCliqueCount += neighbors[vertex].Size();
+        isolatedCliqueCount += neighbors[vertex].Size() + 1;
         neighbors[vertex].Clear();
 
         // vReductions.emplace_back(std::move(reduction));
@@ -831,6 +831,15 @@ void parallel_reductions::reduce_graph_parallel() {
 
     cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
     cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
+
+    int sum_isolated_clique = std::accumulate(numIsolatedCliqueReductions.begin(), numIsolatedCliqueReductions.end(), 0);
+    int sum_vertex_fold = std::accumulate(numVertexFoldReductions.begin(), numVertexFoldReductions.end(), 0);
+    int sum_twin_removed = std::accumulate(numTwinReductionsRemoved.begin(), numTwinReductionsRemoved.end(), 0);
+    int sum_twin_folded = std::accumulate(numTwinReductionsFolded.begin(), numTwinReductionsFolded.end(), 0);
+    int sum_unconfined = std::accumulate(removedUnconfinedVerticesCount.begin(), removedUnconfinedVerticesCount.end(), 0);
+    int sum_diamond = std::accumulate(numDiamondReductions.begin(), numDiamondReductions.end(), 0);
+    int sum_reductions = sum_isolated_clique + sum_vertex_fold + sum_twin_removed + sum_twin_folded + sum_unconfined + sum_diamond + numLPReductions;
+    assert(sum_reductions == neighbors.size() - inGraph.Size());
 }
 
 void parallel_reductions::reduce_graph_sequential() {
