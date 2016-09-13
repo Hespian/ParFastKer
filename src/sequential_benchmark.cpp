@@ -3,6 +3,7 @@
 #include <iostream>
 #include <argtable2.h>
 #include <dirent.h>
+#include <omp.h>
 
 #include "timer.h"
 // #include "ils/ils.h"
@@ -68,11 +69,13 @@ int main(int argn, char **argv) {
         partitions[node] = 0;
     } endfor
 
+    omp_set_num_threads(1);
     for(int i = 0; i < mis_config.num_reps; ++i) {
         std::cout << "---------------------------------------------------------------------" << std::endl;
         std::cout << "New repitition: " << i  << std::endl;
         std::unique_ptr<parallel_reductions> reducer = std::unique_ptr<parallel_reductions>(new parallel_reductions(adj_for_parallel_aglorithm, partitions));
         reducer->reduce_graph_parallel();
+        std::cout << "Kernel size: " << reducer->size() << std::endl;
     }
 
 
