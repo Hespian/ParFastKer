@@ -1038,6 +1038,11 @@ void parallel_reductions::reduce_graph_sequential_reduction_wise() {
 
     ArraySet *remainingUseptr = &remainingUse;
     ArraySet *remainingInsertptr = &remaining2;
+    double isolated_clique_time = 0.0;
+    double unconfined_time = 0.0;
+    double lp_time = 0.0;
+    double vertex_fold_time = 0.0;
+    double twin_time = 0.0;
     while(true) {
         bool changed = false;
         ArraySet *temp;
@@ -1045,7 +1050,7 @@ void parallel_reductions::reduce_graph_sequential_reduction_wise() {
 
         start_time = omp_get_wtime();
         changed = RemoveAllIsolatedClique(0, ReductionsPerPartition[0], remainingUseptr, remainingInsertptr, vMarkedVertices, numIsolatedCliqueReductions);
-        // std::cout << "Isolated clique: " << omp_get_wtime() - start_time << std::endl;
+        isolated_clique_time += omp_get_wtime() - start_time;
         temp = remainingInsertptr;
         remainingInsertptr = remainingUseptr;
         remainingUseptr = temp;
@@ -1053,18 +1058,18 @@ void parallel_reductions::reduce_graph_sequential_reduction_wise() {
 
         start_time = omp_get_wtime();
         changed = removeAllUnconfined(0, remainingUseptr, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
-        // std::cout << "Unconfined: " << omp_get_wtime() - start_time << std::endl;
+        unconfined_time += omp_get_wtime() - start_time;
         if(changed) continue;
 
         vector<ArraySet> remainingPerPartition = {*remainingUseptr};
         start_time = omp_get_wtime();
         changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
-        // std::cout << "LP: " << omp_get_wtime() - start_time << std::endl;
+        lp_time += omp_get_wtime() - start_time;
         if(changed) continue;
 
         start_time = omp_get_wtime();
         changed = FoldAllVertices(0, ReductionsPerPartition[0], remainingUseptr, remainingInsertptr, numVertexFoldReductions);
-        // std::cout << "Vertex fold: " << omp_get_wtime() - start_time << std::endl;
+        vertex_fold_time += omp_get_wtime() - start_time;
         temp = remainingInsertptr;
         remainingInsertptr = remainingUseptr;
         remainingUseptr = temp;
@@ -1072,7 +1077,7 @@ void parallel_reductions::reduce_graph_sequential_reduction_wise() {
 
         start_time = omp_get_wtime();
         changed = removeAllTwin(0, ReductionsPerPartition[0], remainingUseptr, remainingInsertptr, vMarkedVertices, numTwinReductionsRemoved, numTwinReductionsFolded);
-        // std::cout << "Twin: " << omp_get_wtime() - start_time << std::endl;
+        twin_time += omp_get_wtime() - start_time;
         temp = remainingInsertptr;
         remainingInsertptr = remainingUseptr;
         remainingUseptr = temp;
@@ -1093,6 +1098,12 @@ void parallel_reductions::reduce_graph_sequential_reduction_wise() {
     cout << "Number of unconfined vertices removed: " << removedUnconfinedVerticesCount << endl;
     cout << "Number of diamond reductions: " << numDiamondReductions << endl;
     cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
+
+    cout << "Isolated clique time: " << isolated_clique_time << std::endl;
+    cout << "Unconfined time: " << unconfined_time << std::endl;
+    cout << "LP time: " << lp_time << std::endl;
+    cout << "Vertex fold time: " << vertex_fold_time << std::endl;
+    cout << "Twin time: " << twin_time << std::endl;
     omp_set_num_threads(numThreads);
 }
 
