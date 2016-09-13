@@ -40,19 +40,29 @@ add_definitions(${OpenMP_CXX_FLAGS})
 set(TEST_SOURCES ${SOURCES})
 list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
 list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
+list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark_reduction_wise.cpp")
 add_executable(test_correctness ${TEST_SOURCES})
 
 # Add the benchmark executable
 set(BENCHMARK_SOURCES ${SOURCES})
 list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correctness.cpp")
 list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
+list(REMOVE_ITEM BENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark_reduction_wise.cpp")
 add_executable(benchmark ${BENCHMARK_SOURCES})
 
 # Add the sequential benchmark executable
 set(SEQUENTIALBENCHMARK_SOURCES ${SOURCES})
 list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correctness.cpp")
 list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
+list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark_reduction_wise.cpp")
 add_executable(sequential_benchmark ${SEQUENTIALBENCHMARK_SOURCES})
+
+# Add the sequential benchmark with reduction wise kernelization executable
+set(SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES ${SOURCES})
+list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/test_correctness.cpp")
+list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
+list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
+add_executable(sequential_benchmark_reduction_wise ${SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES})
 
 # Additional include directories for libkahip
 include_directories(extern/KaHIP/lib/partition)
@@ -72,3 +82,6 @@ target_link_libraries(benchmark gomp)
 target_link_libraries(sequential_benchmark argtable2)
 target_link_libraries(sequential_benchmark libkahip)
 target_link_libraries(sequential_benchmark gomp)
+target_link_libraries(sequential_benchmark_reduction_wise argtable2)
+target_link_libraries(sequential_benchmark_reduction_wise libkahip)
+target_link_libraries(sequential_benchmark_reduction_wise gomp)

@@ -19,7 +19,7 @@
 
 #include "kaHIP_interface.h"
 
-#define ISOLATED_CLIQUE_MAX_NEIGHBORS 3
+#define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
 // Remove vertex from inGraph first!
@@ -130,8 +130,8 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         return false;
     }
 
-    /*if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
-        return false;*/
+    if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
+        return false;
 
     for (int const neighbor : neighbors[vertex]) {
         assert(partitions[neighbor] == partition);
@@ -980,6 +980,195 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
     // std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();
     time += (endClock - startClock);
+}
+
+void parallel_reductions::reduce_graph_sequential_reduction_wise() {
+    long numThreads;
+    #pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+    omp_set_num_threads(1);
+    profilingInit(&profilingHelper, &neighbors, 1);
+
+    int N = m_AdjacencyArray.size();
+
+    vector<vector<Reduction>> ReductionsPerPartition = vector<vector<Reduction>>(1);
+    std::vector<bool> vMarkedVertices = std::vector<bool>(m_AdjacencyArray.size(), false);
+    vector<int> tempInt1 = vector<int>(m_AdjacencyArray.size());
+    vector<int> tempInt2 = vector<int>(m_AdjacencyArray.size());
+    vector<int> tempIntDoubleSize = vector<int>(m_AdjacencyArray.size() * 2);
+    fast_set fastSet(m_AdjacencyArray.size());
+    ArraySet remainingUse = ArraySet(N);
+    ArraySet remaining2 = ArraySet(N);
+
+    partition_nodes.resize(1);
+    partition_nodes[0].clear();
+    inGraphPerPartition = vector<ArraySet>(1);
+    inGraphPerPartition[0] = ArraySet(N);
+    for(int vertex = 0; vertex < N; ++vertex) {
+        boundaryVertices.Remove(vertex);
+        partitions[vertex] = 0;
+        partition_nodes[0].push_back(vertex);
+        if(inGraph.Contains(vertex)) {
+            inGraphPerPartition[0].Insert(vertex);
+        }
+    }
+
+    double time(0);
+    int numIsolatedCliqueReductions(0);
+    int numVertexFoldReductions(0);
+    int numTwinReductionsRemoved(0);
+    int numTwinReductionsFolded(0);
+    int removedUnconfinedVerticesCount(0);
+    int numLPReductions(0);
+    int numDiamondReductions(0);
+    
+    double startClock = omp_get_wtime();
+
+    vector<vector<int>> tempInt1PerPartition = {tempInt1};
+
+    remainingUse.Clear();
+    for(int vertex = 0; vertex < N; ++vertex)  {
+        if(inGraph.Contains(vertex)) {
+            assert(partitions[vertex] == 0);
+            remainingUse.Insert(vertex);
+        }
+    }
+
+    ArraySet *remainingUseptr = &remainingUse;
+    ArraySet *remainingInsertptr = &remaining2;
+    while(true) {
+        bool changed = false;
+        ArraySet *temp;
+        double start_time;
+
+        start_time = omp_get_wtime();
+        changed = RemoveAllIsolatedClique(0, ReductionsPerPartition[0], remainingUseptr, remainingInsertptr, vMarkedVertices, numIsolatedCliqueReductions);
+        // std::cout << "Isolated clique: " << omp_get_wtime() - start_time << std::endl;
+        temp = remainingInsertptr;
+        remainingInsertptr = remainingUseptr;
+        remainingUseptr = temp;
+        if(changed) continue;
+
+        start_time = omp_get_wtime();
+        changed = removeAllUnconfined(0, remainingUseptr, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
+        // std::cout << "Unconfined: " << omp_get_wtime() - start_time << std::endl;
+        if(changed) continue;
+
+        vector<ArraySet> remainingPerPartition = {*remainingUseptr};
+        start_time = omp_get_wtime();
+        changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+        // std::cout << "LP: " << omp_get_wtime() - start_time << std::endl;
+        if(changed) continue;
+
+        start_time = omp_get_wtime();
+        changed = FoldAllVertices(0, ReductionsPerPartition[0], remainingUseptr, remainingInsertptr, numVertexFoldReductions);
+        // std::cout << "Vertex fold: " << omp_get_wtime() - start_time << std::endl;
+        temp = remainingInsertptr;
+        remainingInsertptr = remainingUseptr;
+        remainingUseptr = temp;
+        if(changed) continue;
+
+        start_time = omp_get_wtime();
+        changed = removeAllTwin(0, ReductionsPerPartition[0], remainingUseptr, remainingInsertptr, vMarkedVertices, numTwinReductionsRemoved, numTwinReductionsFolded);
+        // std::cout << "Twin: " << omp_get_wtime() - start_time << std::endl;
+        temp = remainingInsertptr;
+        remainingInsertptr = remainingUseptr;
+        remainingUseptr = temp;
+        if(changed) continue;
+
+        break;
+    }
+
+    double endClock = omp_get_wtime();
+    AllReductions.push_back(ReductionsPerPartition);
+    profilingPrint(&profilingHelper);
+
+    cout << "Total time spent applying reductions  : " << (endClock - startClock) << endl;
+    cout << "Number of isolated clique reductions: " << numIsolatedCliqueReductions << endl;
+    cout << "Number of vertex fold reductions: " << numVertexFoldReductions << endl;
+    cout << "Number of twin reductions (removed): " << numTwinReductionsRemoved << endl;
+    cout << "Number of twin reductions (folded): " << numTwinReductionsFolded << endl;
+    cout << "Number of unconfined vertices removed: " << removedUnconfinedVerticesCount << endl;
+    cout << "Number of diamond reductions: " << numDiamondReductions << endl;
+    cout << "Number of vertices removed by LP reduction: " << numLPReductions << endl;
+    omp_set_num_threads(numThreads);
+}
+
+bool parallel_reductions::removeAllUnconfined(int const partition, ArraySet *remainingInsert, fast_set &closedNeighborhood, std::vector<int> &neighborhood, std::vector<int> &numNeighborsInS, std::vector<int> &neighborsInS, int &removedUnconfinedVerticesCount, int &numDiamondReductions) {
+    std::vector<int> verticesToRemove;
+    bool reduced = false;
+    for (int const vertex : inGraphPerPartition[partition]) {
+        assert(partitions[vertex] == partition);
+        if(inGraph.Contains(vertex)) {
+            bool reduction = removeUnconfined(partition, vertex, *remainingInsert, closedNeighborhood, neighborhood, numNeighborsInS, neighborsInS, removedUnconfinedVerticesCount, numDiamondReductions);
+            if(reduction) {
+                reduced = true;
+                verticesToRemove.push_back(vertex);
+            }
+        }
+    }
+    for(int vertex : verticesToRemove) {
+        inGraphPerPartition[partition].Remove(vertex);
+    }
+    return reduced;
+}
+bool parallel_reductions::removeAllTwin(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, std::vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount) {
+    bool reduced = false;
+    while (!(*remainingUse).Empty()) {
+        int const vertex = *((*remainingUse).begin());
+        (*remainingUse).Remove(vertex);
+        if(!inGraph.Contains(vertex))
+            continue;
+        assert(partitions[vertex] == partition);
+        assert(independent_set[vertex] == -1);
+        updateNeighborhood(vertex);
+        bool reduction = removeTwin(partition, vertex, vReductions, *remainingInsert, vMarkedVertices, removedTwinCount, foldedTwinCount);
+        if(!reduction) {
+            remainingInsert->Insert(vertex);
+        }
+        reduced |=reduction;
+    }
+    return reduced;
+}
+
+bool parallel_reductions::RemoveAllIsolatedClique(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount){
+    bool reduced = false;
+    while (!(*remainingUse).Empty()) {
+        int const vertex = *((*remainingUse).begin());
+        (*remainingUse).Remove(vertex);
+        if(!inGraph.Contains(vertex))
+            continue;
+        assert(partitions[vertex] == partition);
+        assert(independent_set[vertex] == -1);
+        updateNeighborhood(vertex);
+        bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, *remainingInsert, vMarkedVertices, isolatedCliqueCount);
+        if(!reduction) {
+            remainingInsert->Insert(vertex);
+        }
+        reduced |=reduction;
+    }
+    return reduced;
+}
+
+bool parallel_reductions::FoldAllVertices(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, int &foldedVertexCount) {
+    bool reduced = false;
+    while (!(*remainingUse).Empty()) {
+        int const vertex = *((*remainingUse).begin());
+        (*remainingUse).Remove(vertex);
+        if(!inGraph.Contains(vertex))
+            continue;
+        assert(partitions[vertex] == partition);
+        assert(independent_set[vertex] == -1);
+        updateNeighborhood(vertex);
+        bool reduction = FoldVertex(partition, vertex, vReductions, *remainingInsert, foldedVertexCount);
+        if(!reduction) {
+            remainingInsert->Insert(vertex);
+        }
+        reduced |=reduction;
+    }
+    return reduced;
 }
 
 void parallel_reductions::UndoReductions(vector<Reduction> const &vReductions)

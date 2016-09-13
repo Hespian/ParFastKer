@@ -26,6 +26,7 @@ public:
 
     void reduce_graph_parallel();
     void reduce_graph_sequential();
+    void reduce_graph_sequential_reduction_wise();
 
     void ApplyReductions(int const partition, std::vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, std::vector<int> &tempInt1, std::vector<int> &tempInt2, fast_set &fastSet, std::vector<int> &tempIntDoubleSize, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount, int &numDiamondReductions);
     void UndoReductions(std::vector<Reduction> const &vReductions);
@@ -52,6 +53,11 @@ protected: // methods
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining);
     void updateAllNeighborhoods();
     void UpdateRemaining(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition);
+
+    bool removeAllUnconfined(int const partition, ArraySet *remainingInsert, fast_set &closedNeighborhood, std::vector<int> &neighborhood, std::vector<int> &numNeighborsInS, std::vector<int> &neighborsInS, int &removedUnconfinedVerticesCount, int &numDiamondReductions);
+    bool removeAllTwin(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, std::vector<bool> &vMarkedVertices, int &removedTwinCount, int &foldedTwinCount);
+    bool RemoveAllIsolatedClique(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
+    bool FoldAllVertices(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, int &foldedVertexCount);
 
 protected: // members
     std::vector<int> graph_to_kernel_map;
