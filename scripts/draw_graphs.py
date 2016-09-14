@@ -147,6 +147,8 @@ print(sizes)
 print("Repititions:")
 print(num_reps)
 
+numVertices = int(numVerticesString)
+
 
 sum_vertex_folds = [0] * len(sizes)
 sum_isolated_clique = [0] * len(sizes)
@@ -284,11 +286,25 @@ index = np.arange(len(sizes))
 width = 0.75
 plt.figure()
 plt.bar(index, parallel_sizes, width, color="red")
-plt.xlabel('# Partitions')
+plt.xlabel('# Threads')
 plt.ylabel('Kernel size')
 plt.title('Kernel size after parallel reductions')
 plt.xticks(index, sizes)
 plt.savefig(os.path.join(plotsDir, "kernel_size"))
+plt.clf()
+
+reductions_per_second = [0] * len(sizes)
+for i in range(len(sizes)):
+	reductions_per_second[i] = (numVertices - parallel_sizes[i]) / parallel_times[i]
+index = np.arange(len(sizes))
+width = 0.75
+plt.figure()
+plt.bar(index, reductions_per_second, width, color="red")
+plt.xlabel('# Threads')
+plt.ylabel('Vertices per second')
+plt.title('Vertices removed by reductions per second')
+plt.xticks(index, sizes)
+plt.savefig(os.path.join(plotsDir, "reductions_per_second"))
 plt.clf()
 
 
@@ -297,7 +313,7 @@ for i in range(len(sizes)):
 	data[i] = time_per_block[sizes[i]]
 plt.figure()
 plt.boxplot(data, labels=sizes, showmeans=True)
-plt.xlabel('# Partitions')
+plt.xlabel('# Threads')
 plt.ylabel('Run time (s)')
 plt.title('Run time per partition box plots')
 plt.savefig(os.path.join(plotsDir, "runtime_boxplots"))
