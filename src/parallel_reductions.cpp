@@ -1054,7 +1054,7 @@ void parallel_reductions::reduce_graph_sequential_reduction_wise() {
         temp = remainingInsertptr;
         remainingInsertptr = remainingUseptr;
         remainingUseptr = temp;
-        if(changed) continue;
+        // if(changed) continue;
 
         start_time = omp_get_wtime();
         changed = removeAllUnconfined(0, remainingUseptr, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
