@@ -21,10 +21,10 @@ void full_reductions::reduce_graph() {
 	parallel_reducers.back()->reduce_graph_parallel();
 	std::cout << "After call to parallel reduce_graph" << std::endl;
 	std::cout << "Kernel size after parallel run: " << parallel_reducers.back()->size() << std::endl;
-	std::cout << "Before call to sequential reduce_graph" << std::endl;
+	/*std::cout << "Before call to sequential reduce_graph" << std::endl;
 	parallel_reducers.back()->reduce_graph_sequential();
 	std::cout << "After call to sequential reduce_graph" << std::endl;
-	std::cout << "Kernel size after sequential run: " << parallel_reducers.back()->size() << std::endl;
+	std::cout << "Kernel size after sequential run: " << parallel_reducers.back()->size() << std::endl;*/
 }
 
 size_t full_reductions::get_current_is_size_with_folds() {

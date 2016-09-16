@@ -36,6 +36,8 @@ add_definitions(-std=c++11)
 set(OpenMP_CXX_FLAGS "${OpenMP_CXX_FLAGS} -fopenmp")
 add_definitions(${OpenMP_CXX_FLAGS})
 
+# ADD_DEFINITIONS(-g2 -fno-inline -O2 -fno-omit-frame-pointer)
+
 # Add the test executable
 set(TEST_SOURCES ${SOURCES})
 list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
