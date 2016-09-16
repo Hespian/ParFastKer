@@ -263,7 +263,7 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
                 independent_set[vertex] = 1;
                 inGraph.Remove(vertex);
                 boundaryVertices.Remove(vertex);
-                for(int neighbor: neighbors[vertex]) {
+                for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
                     // REMOVE_NEIGHBOR(partition, neighbor, vertex);
                     INSERT_REMAINING(partition, remaining, neighbor);
                 }
@@ -303,7 +303,7 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
             int u = neighborhood[i];
             if (numNeighborsInS[u] != 2) continue;
             int v1 = -1, v2 = -1;
-            for (int w : neighbors[u]) if (!closedNeighborhood.get(w)) {
+            for (int w : neighbors[u]) if (inGraph.Contains(w) && !closedNeighborhood.get(w)) {
                 if (v1 < 0) v1 = w;
                 else if (v2 < 0) v2 = w;
                 else {
