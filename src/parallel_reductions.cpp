@@ -24,7 +24,7 @@
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
 // Remove vertex from inGraph first!
 // TODO
-#define REMOVE_NEIGHBOR(partition, neighbor, vertex) {assert(!inGraph.Contains(vertex)); if(partition == partitions[neighbor]) {neighbors[neighbor].Remove(vertex);} else { assert(partition != partitions[neighbor]); neighborhoodChanged.Insert(neighbor);}}
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) {assert(!inGraph.Contains(vertex)); if(partition != partitions[neighbor]) {neighborhoodChanged.Insert(neighbor);}}
 #define REMOVE_VERTEX(partition, vertex) {inGraph.Remove(vertex); inGraphPerPartition[partition].Remove(vertex);}
 
 using namespace std;
@@ -141,15 +141,15 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         return false;
     }
 
-    // TODO
-    if(neighbors[vertex].Size() > ISOLATED_CLIQUE_MAX_NEIGHBORS)
+    int const vertexDegree = degree(vertex);
+
+    if(vertexDegree > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;
 
-    // TODO
-    for (int const neighbor : neighbors[vertex]) {
+    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         assert(partitions[neighbor] == partition);
         // TODO
-        if (neighbors[neighbor].Size() < neighbors[vertex].Size()) {
+        if (degree(neighbor) < vertexDegree) {
             profilingAddTimeUnsuccessfulIsolatedCliqueDegree(&profilingHelper, partition);
             return false;
         }
@@ -157,22 +157,18 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 
     bool superSet(true);
 
-    // TODO
-    for (int const neighbor : neighbors[vertex]) {
+    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
 
-        // TODO
-        for (int const nNeighbor : neighbors[neighbor]) {
+        for (int const nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
             vMarkedVertices[nNeighbor] = true;
         }
         vMarkedVertices[neighbor] = true;
 
-        // TODO
-        for (int const neighbor2 : neighbors[vertex]) {
+        for (int const neighbor2 : neighbors[vertex]) if(inGraph.Contains(neighbor2)) {
             superSet = superSet && vMarkedVertices[neighbor2];
         }
 
-        // TODO
-        for (int const nNeighbor : neighbors[neighbor]) {
+        for (int const nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
             vMarkedVertices[nNeighbor] = false;
         }
         vMarkedVertices[neighbor] = false;
@@ -186,8 +182,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         // Reduction reduction(ISOLATED_VERTEX);
         // reduction.SetVertex(vertex);
         independent_set[vertex] = 0;
-        // TODO
-        for (int const neighbor : neighbors[vertex]) {
+        for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
             REMOVE_VERTEX(partition, neighbor);
             boundaryVertices.Remove(neighbor);
             remaining.Remove(neighbor);
@@ -198,17 +193,14 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         }
         REMOVE_VERTEX(partition, vertex);
         boundaryVertices.Remove(vertex);
-        // TODO
-        for (int const neighbor : neighbors[vertex]) {
-            // TODO
-            for (int const nNeighbor : neighbors[neighbor]) {
+        for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+            for (int const nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
                 if (inGraph.Contains(nNeighbor)) {
                     INSERT_REMAINING(partition, remaining, nNeighbor);
                     // remaining.Insert(nNeighbor);
                 }
 
                 if (nNeighbor != vertex) {
-                    // TODO
                     REMOVE_NEIGHBOR(partition, nNeighbor, neighbor);
                     // neighbors[nNeighbor].Remove(neighbor);
                     // reduction.AddRemovedEdge(nNeighbor, neighbor);
@@ -217,8 +209,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
             }
             neighbors[neighbor].Clear();
         }
-        // TODO
-        isolatedCliqueCount += neighbors[vertex].Size() + 1;
+        isolatedCliqueCount += vertexDegree + 1;
         neighbors[vertex].Clear();
 
         // vReductions.emplace_back(std::move(reduction));
@@ -235,8 +226,7 @@ bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int
     if(boundaryVertices.Contains(vertex)) {
         return false;
     }
-    // TODO
-    for(int neighbor : neighbors[vertex]) {
+    for(int neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         bool wasBoundaryVertex = boundaryVertices.Contains(neighbor);
         updateNeighborhood(neighbor);
         if(boundaryVertices.Contains(neighbor)) {
@@ -289,8 +279,7 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
                 inGraph.Remove(vertex);
                 boundaryVertices.Remove(vertex);
                 for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-                    // TODO
-                    // REMOVE_NEIGHBOR(partition, neighbor, vertex);
+                    REMOVE_NEIGHBOR(partition, neighbor, vertex);
                     INSERT_REMAINING(partition, remaining, neighbor);
                 }
                 neighbors[vertex].Clear();
@@ -355,8 +344,7 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
                 independent_set[vertex] = 1;
                 inGraph.Remove(vertex);
                 for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-                    // TODO
-                    // REMOVE_NEIGHBOR(partition, neighbor, vertex);
+                    REMOVE_NEIGHBOR(partition, neighbor, vertex);
                     INSERT_REMAINING(partition, remaining, neighbor);              
                 }
                 neighbors[vertex].Clear();
@@ -557,26 +545,35 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 
     profilingStartClock(&profilingHelper, partition, vertex);
 
-    // TODO
-    if (neighbors[vertex].Size() != 2) { 
-        profilingAddTimeUnsuccessfulFoldDegree(&profilingHelper, partition);
-        return false;
+    int neighbor1 = -1;
+    int neighbor2 = -1;
+    for(int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+        if(neighbor1 == -1)
+            neighbor1 = neighbor;
+        else if (neighbor2 == -1) 
+            neighbor2 = neighbor;
+        else {
+            profilingAddTimeUnsuccessfulFoldDegree(&profilingHelper, partition);
+            return false;
+        }
     }
-    //TODO
+
+    int const vertex1(neighbor1);
+    int const vertex2(neighbor2);
+
     if (!isTwoNeighborhoodInSamePartition(vertex, partition, remaining)) { 
         profilingAddTimeUnsuccessfulFoldWrongPartition(&profilingHelper, partition);
         return false;
     }
-    // TODO
-    if (neighbors[neighbors[vertex][0]].Contains(neighbors[vertex][1])) {
-        profilingAddTimeUnsuccessfulFoldAdjacent(&profilingHelper, partition);
+
+    for(int const neighbor2 : neighbors[vertex1]) if(inGraph.Contains(neighbor2)) {
+        if(neighbor2 == vertex2) {
+            profilingAddTimeUnsuccessfulFoldAdjacent(&profilingHelper, partition);
         return false; // neighbors must not be adjacent.
+        }
     }
 
     foldedVertexCount += 2;
-
-    int const vertex1(neighbors[vertex][0]);
-    int const vertex2(neighbors[vertex][1]);
 
     assert(partitions[vertex1] == partition);
     assert(partitions[vertex2] == partition);
@@ -588,22 +585,13 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 
     neighbors[vertex].Clear();
     neighbors[vertex].Resize(neighbors[vertex1].Size() + neighbors[vertex2].Size());
-    neighbors[vertex1].Remove(vertex);
-    neighbors[vertex2].Remove(vertex);
+    // neighbors[vertex1].Remove(vertex);
+    // neighbors[vertex2].Remove(vertex);
 
-    // reduction.AddRemovedEdge(vertex, vertex1);
-    // reduction.AddRemovedEdge(vertex1, vertex);
-    // reduction.AddRemovedEdge(vertex, vertex2);
-    // reduction.AddRemovedEdge(vertex2, vertex);
-
-    // TODO
-    for (int const neighbor1 : neighbors[vertex1]) {
+    for (int const neighbor1 : neighbors[vertex1]) if(inGraph.Contains(neighbor1)) {
         assert(partitions[neighbor1] == partition);
         if (neighbor1 == vertex) continue;
-        // TODO
         neighbors[neighbor1].Remove(vertex1);
-        // reduction.AddRemovedEdge(neighbor1, vertex1);
-        // reduction.AddRemovedEdge(vertex1, neighbor1);
         neighbors[vertex].Insert(neighbor1);
         assert(partitions[vertex] == partitions[neighbor1]);
         INSERT_REMAINING(partition, remaining, neighbor1);
@@ -612,13 +600,10 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     neighbors[vertex1].Clear();
     assert(partitions[vertex] == partitions[vertex1]);
 
-    for (int const neighbor2 : neighbors[vertex2]) {
+    for (int const neighbor2 : neighbors[vertex2]) if(inGraph.Contains(neighbor2)) {
         assert(partitions[neighbor2] == partition);
         if (neighbor2 == vertex) continue;
-        // TODO
         neighbors[neighbor2].Remove(vertex2);
-        // reduction.AddRemovedEdge(neighbor2, vertex2);
-        // reduction.AddRemovedEdge(vertex2, neighbor2);
         neighbors[vertex].Insert(neighbor2);
         assert(partitions[vertex] == partitions[neighbor2]);
         INSERT_REMAINING(partition, remaining, neighbor2);
@@ -628,7 +613,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     neighbors[vertex2].Clear();
     assert(partitions[vertex] == partitions[vertex2]);
     
-    for (int const neighbor : neighbors[vertex]) {
+    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         neighbors[neighbor].Insert(vertex);
     }
 
@@ -996,7 +981,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
     // std::cout << partition << ": Starting reductions..." << std::endl;
     while (!remaining.Empty()) {
         // std::cout << partition << ": Starting reductions with dependency checking..." << std::endl;
-        /*while (!remaining.Empty()) {
+        while (!remaining.Empty()) {
             int const vertex = *(remaining.begin());
             remaining.Remove(vertex);
             assert(inGraph.Contains(vertex));
@@ -1007,18 +992,17 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             if (!reduction && m_bAllowVertexFolds) {
                 reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
             }
-            if (!reduction) {
+            /*if (!reduction) {
                 reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
-            }
-            dependencyCheckingIterations++;
+            }*/
+            /*dependencyCheckingIterations++;
             if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
-            }
-        }*/
+            }*/
+        }
         // std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
         // std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
         std::vector<int> verticesToRemove;
-        std::cout << "Bla " << remaining.Size() << std::endl;
         for (int const vertex : inGraphPerPartition[partition]) {
             assert(partitions[vertex] == partition);
             if(inGraph.Contains(vertex)) {
@@ -1032,7 +1016,6 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         for(int vertex : verticesToRemove) {
             inGraphPerPartition[partition].Remove(vertex);
         }
-        remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
     }
     // std::cout << partition << ": Finished reductions!" << std::endl;
