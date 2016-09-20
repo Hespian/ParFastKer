@@ -59,6 +59,8 @@ protected: // methods
     bool RemoveAllIsolatedClique(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldAllVertices(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, int &foldedVertexCount);
 
+    int degree(int const vertex);
+
 protected: // members
     std::vector<int> graph_to_kernel_map;
     std::vector<int> kernel_solution;

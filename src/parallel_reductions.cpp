@@ -120,6 +120,16 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
     }
 }
 
+int parallel_reductions::degree(int const vertex) {
+    int deg = 0;
+    for(int neighbor : neighbors[vertex]) {
+        if(inGraph.Contains(neighbor)) {
+            ++deg;
+        }
+    }
+    return deg;
+}
+
 bool parallel_reductions::RemoveIsolatedClique(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
 {
     assert(partitions[vertex] == partition);
