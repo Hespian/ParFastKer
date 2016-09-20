@@ -736,7 +736,6 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     return changed;
 }
 
-// TODO: Just update boundary vertices
 void parallel_reductions::updateNeighborhood(int const vertex) {
     if(!neighborhoodChanged.Contains(vertex)) {
         return;
@@ -745,18 +744,12 @@ void parallel_reductions::updateNeighborhood(int const vertex) {
 
     profilingStartClockUpdateNeighborhood(&profilingHelper, partitions[vertex], vertex);
 
-    std::vector<int> verticesToRemove;
     int partition = partitions[vertex];
     bool isBoundaryVertex = false;
-    for(int neighbor: neighbors[vertex]) {
-        if(!inGraph.Contains(neighbor)) {
-            verticesToRemove.push_back(neighbor);
-        } else if(partitions[neighbor] != partition) {
+    for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+        if(partitions[neighbor] != partition) {
             isBoundaryVertex = true;
         }
-    }
-    for(int neighborToRemove : verticesToRemove) {
-        neighbors[vertex].Remove(neighborToRemove);
     }
     if(!isBoundaryVertex) {
         boundaryVertices.Remove(vertex);
