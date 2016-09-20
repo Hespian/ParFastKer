@@ -584,7 +584,9 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     reduction.AddNeighbor(vertex2);
 
     neighbors[vertex].Clear();
-    neighbors[vertex].Resize(neighbors[vertex1].Size() + neighbors[vertex2].Size());
+    int const vertex1degree = degree(vertex1);
+    int const vertex2degree = degree(vertex2);
+    neighbors[vertex].Resize(vertex1degree + vertex2degree);
     // neighbors[vertex1].Remove(vertex);
     // neighbors[vertex2].Remove(vertex);
 
