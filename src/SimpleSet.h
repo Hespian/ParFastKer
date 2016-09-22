@@ -22,14 +22,17 @@ public:
     }
 
     bool Contains(int const x) const {
+        assert(x < elements.size());
         return elements[x];
     }
 
     void Insert(int const x) {
+        assert(x < elements.size());
         elements[x] = true;
     }
 
     void Remove(int const x) {
+        assert(x < elements.size());
         elements[x] = false;
     }
 

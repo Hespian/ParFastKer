@@ -61,6 +61,9 @@ protected: // methods
 
     int degree(int const vertex);
 
+    // Just for testing
+    bool checkBoundaryVertices();
+
 protected: // members
     std::vector<int> graph_to_kernel_map;
     std::vector<int> kernel_solution;
