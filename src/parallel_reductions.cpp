@@ -556,7 +556,6 @@ afterNeighborhoodCheck:
     return reduced;
 }
 
-// TODO 
 bool parallel_reductions::FoldVertex(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount)
 {
     assert(partitions[vertex] == partition);
@@ -656,7 +655,6 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 }
 
 
-// TODO: Check again. But seems fine
 void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition) {
     int numPartitions = remainingPerPartition.size();
     #pragma omp parallel for
@@ -668,7 +666,7 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
             assert(partitions[vertex] == partition);
             if(!inGraph.Contains(vertex)) {
                 neighborhoodChanged.Remove(vertex);
-                assert(neighbors[vertex].Size() == 0);
+                assert(degree(vertex) == 0);
                 remaining.Remove(vertex);
                 buffer[numVerticesRemoved++] = vertex;
             }
@@ -695,7 +693,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
         updateNeighborhood(vertex);
     }
     double updateNeighborhoodBeforetime = omp_get_wtime();
-    maximumMatching.LoadGraph(neighbors);
+    maximumMatching.LoadGraph(neighbors, inGraph);
     double loadGraphTime = omp_get_wtime();
     maximumMatching.KarpSipserInit();
     double initTime = omp_get_wtime();
@@ -713,7 +711,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
             // vertex is in the vertex cover
             independent_set[vertex] = 1;
             inGraph.Remove(vertex);
-            for(int neighbor: neighbors[vertex]) {
+            for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
                 neighborhoodChanged.Insert(neighbor);
             }
             neighbors[vertex].Clear();
@@ -843,7 +841,7 @@ void parallel_reductions::reduce_graph_parallel() {
         }
     }
 
-    // LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+    LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
 
     bool changed = true;
     int numIterations = 0;
@@ -855,8 +853,8 @@ void parallel_reductions::reduce_graph_parallel() {
         }
         int sizeAfter = inGraph.Size();
         // std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
-        changed = false;
-        // changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+        // changed = false;
+        changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
         // std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
         numIterations++;
     }

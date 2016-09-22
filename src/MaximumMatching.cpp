@@ -63,12 +63,25 @@ MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyA
 	}
 }
 
-void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors) {
+int MaximumMatching::VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph) {
+    if(!inGraph.Contains(vertex))
+        return 0;
+    int deg = 0;
+    for(int neighbor : neighbors[vertex]) {
+        if(inGraph.Contains(neighbor)) {
+            ++deg;
+        }
+    }
+    return deg;
+}
+
+void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph) {
 	assert(neighbors.size() == G->nrows);
 	#pragma omp parallel for
 	for(int i = 0; i < G->nrows; ++i ) {
-		degree[i] = neighbors[i].Size();
-		degree[i + G->nrows] = neighbors[i].Size();
+        int deg = VertexDegree(i, neighbors, inGraph);
+		degree[i] = deg;
+		degree[i + G->nrows] = deg;
 	}
 	auto end_ptr = __gnu_parallel::partial_sum(degree, degree + (G->n), (G->vtx_pointer) + 1);
 	assert(end_ptr == &(G->vtx_pointer[G->n]) + 1);
@@ -79,14 +92,13 @@ void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors) {
 	G->m = numEdges;
 
 	#pragma omp parallel for
-	for(int i = 0; i < G->nrows; ++i) {
+	for(int i = 0; i < G->nrows; ++i) if(degree[i] > 0) {
 		long index = G->vtx_pointer[i];
-		for(int neighbor: neighbors[i]) {
+        long rhsOffset = G->vtx_pointer[i + G->nrows] - index;
+		for(int neighbor: neighbors[i]) if(inGraph.Contains(neighbor)) {
+            // assert(index - G->vtx_pointer[i] < VertexDegree(i, neighbors, inGraph));
+            G->endV[rhsOffset + index] = neighbor;
 			G->endV[index++] = neighbor + G->nrows;
-		}
-		index = G->vtx_pointer[i + G->nrows];
-		for(int neighbor: neighbors[i]) {
-			G->endV[index++] = neighbor;
 		}
 	}
 }
