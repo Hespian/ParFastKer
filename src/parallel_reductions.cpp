@@ -303,6 +303,9 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
             int u = neighborhood[i];
             if (numNeighborsInS[u] != 2) continue;
             int v1 = -1, v2 = -1;
+            // numNeighborsInS[u] == 2 assures that there are exactly two neighbors in S
+            // !closedNeighborhood.get(w) can only cause the loop to find more vertices, not less
+            // => only vertices with exactly 2 neighbors outside of N(S) are found
             for (int w : neighbors[u]) if (inGraph.Contains(w) && !closedNeighborhood.get(w)) {
                 if (v1 < 0) v1 = w;
                 else if (v2 < 0) v2 = w;
