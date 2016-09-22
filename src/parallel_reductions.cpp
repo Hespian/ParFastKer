@@ -1066,7 +1066,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         for(int vertex : verticesToRemove) {
             inGraphPerPartition[partition].Remove(vertex);
         }
-        remaining.Clear();
+        // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
     }
     // std::cout << partition << ": Finished reductions!" << std::endl;
