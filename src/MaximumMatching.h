@@ -4,6 +4,7 @@
 #include "SparseArraySet.h"
 #include "SimpleSet.h"
 #include <vector>
+#include <atomic>
 
 typedef struct /* the bipartite graph data structure */
 {
@@ -22,7 +23,7 @@ public:
 
 	MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray);
 	~MaximumMatching();
-	void LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph);
+	void LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree);
 	long* MS_BFS_Graft();
 	long KarpSipserInit();
 	void MarkReachableVertices();
@@ -31,7 +32,7 @@ public:
 
 protected:
 	void findMate(long u, graph* G, long* flag,long* mate, long* degree);
-	int VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph);
+	int VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree);
 
 	// Just for testing
 	bool IsValidVertexCover();

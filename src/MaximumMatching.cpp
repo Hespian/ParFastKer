@@ -63,23 +63,17 @@ MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyA
 	}
 }
 
-int MaximumMatching::VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph) {
+int MaximumMatching::VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree) {
     if(!inGraph.Contains(vertex))
         return 0;
-    int deg = 0;
-    for(int neighbor : neighbors[vertex]) {
-        if(inGraph.Contains(neighbor)) {
-            ++deg;
-        }
-    }
-    return deg;
+    return vertexDegree[vertex];
 }
 
-void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph) {
+void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree) {
 	assert(neighbors.size() == G->nrows);
 	#pragma omp parallel for
 	for(int i = 0; i < G->nrows; ++i ) {
-        int deg = VertexDegree(i, neighbors, inGraph);
+        int deg = VertexDegree(i, neighbors, inGraph, vertexDegree);
 		degree[i] = deg;
 		degree[i + G->nrows] = deg;
 	}

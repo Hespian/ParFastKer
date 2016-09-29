@@ -659,7 +659,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     double startTime = omp_get_wtime();
     UpdateRemaining(remainingPerPartition, bufferPerPartition);
     double updateRemainingBeforeTime = omp_get_wtime();
-    maximumMatching.LoadGraph(neighbors, inGraph);
+    maximumMatching.LoadGraph(neighbors, inGraph, vertexDegree);
     double loadGraphTime = omp_get_wtime();
     maximumMatching.KarpSipserInit();
     double initTime = omp_get_wtime();
