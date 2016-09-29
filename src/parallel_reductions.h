@@ -15,6 +15,7 @@
 #include <utility>
 #include <ctime>
 #include <string>
+#include <atomic>
 
 #define TIMERS
 
@@ -60,6 +61,7 @@ protected: // methods
     bool FoldAllVertices(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, int &foldedVertexCount);
 
     int degree(int const vertex);
+    bool isBoundaryVertex(const int vertex);
 
     // Just for testing
     bool checkBoundaryVertices();
@@ -77,6 +79,8 @@ protected: // members
     std::vector<ArraySet> inGraphPerPartition;
     SimpleSet boundaryVertices;
     MaximumMatching maximumMatching;
+    std::vector<std::atomic_int> vertexDegree;
+    std::vector<std::atomic_int> numCutEdges;
 #ifdef TIMERS
     clock_t replaceTimer;
     #endif // TIMERS

@@ -129,13 +129,17 @@ int parallel_reductions::degree(int const vertex) {
     return deg;
 }
 
+bool parallel_reductions::isBoundaryVertex(const int vertex) {
+    return boundaryVertices.Contains(vertex);
+}
+
 bool parallel_reductions::RemoveIsolatedClique(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
 {
     assert(partitions[vertex] == partition);
 
     profilingStartClock(&profilingHelper, partition, vertex);
 
-    if(boundaryVertices.Contains(vertex)) {
+    if(isBoundaryVertex(vertex)) {
         profilingAddTimeUnsuccessfulIsolatedCliquePartition(&profilingHelper, partition);
         return false;
     }
@@ -208,13 +212,13 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 }
 
 bool parallel_reductions::isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining) {
-    if(boundaryVertices.Contains(vertex)) {
+    if(isBoundaryVertex(vertex)) {
         return false;
     }
     for(int neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-        bool wasBoundaryVertex = boundaryVertices.Contains(neighbor);
+        bool wasBoundaryVertex = isBoundaryVertex(neighbor);
         updateNeighborhood(neighbor);
-        if(boundaryVertices.Contains(neighbor)) {
+        if(isBoundaryVertex(neighbor)) {
             return false;
         } else if(wasBoundaryVertex) {
             remaining.Insert(neighbor);
@@ -351,7 +355,7 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
     assert(vMarkedVertices.size() == neighbors.size());
     // This takes really long (it's O(n))
     // assert(std::accumulate(vMarkedVertices.begin(), vMarkedVertices.end(), false, std::logical_or<bool>()) == false);
-    if(boundaryVertices.Contains(vertex))
+    if(isBoundaryVertex(vertex))
         return false;
 
     int twinNeighbors[3];
@@ -430,7 +434,7 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
     //     std::cout << "Twin neighbors:" << std::endl;
     //     for(int const neighbor: neighbors[twin]) if(inGraph.Contains(neighbor)) std::cout << neighbor << std::endl;
     // }
-    assert(!boundaryVertices.Contains(twin));
+    assert(!isBoundaryVertex(twin));
     assert(!neighbors[vertex].Contains(twin));
 
     bool isNeighborhoodAdjacent = false;
@@ -521,7 +525,7 @@ afterNeighborhoodCheck:
             neighbors[vertex].Clear();
             neighbors[vertex].Resize(neighborHoodSize);
             for(int neighbor1: reduction.GetNeighbors()) {
-                assert(!boundaryVertices.Contains(neighbor1));
+                assert(!isBoundaryVertex(neighbor1));
                 for(int neighbor2: neighbors[neighbor1]) if(inGraph.Contains(neighbor2)) {
                     assert(partitions[neighbor2] == partitions[neighbor1]);
                     assert(neighbor2 != vertex);
@@ -539,7 +543,7 @@ afterNeighborhoodCheck:
                 remaining.Remove(neighbor1);
             }
             REMOVE_VERTEX(partition, twin);
-            assert(!boundaryVertices.Contains(twin));
+            assert(!isBoundaryVertex(twin));
             remaining.Remove(twin);
             remaining.Insert(vertex);
             vReductions.push_back(reduction);
@@ -913,18 +917,18 @@ void parallel_reductions::reduce_graph_parallel() {
 
 bool parallel_reductions::checkBoundaryVertices() {
     for(int vertex = 0; vertex < neighbors.size(); ++vertex) {
-        bool isBoundaryVertex = false;
+        bool isVertexBoundaryVertex = false;
         for(int const neighbor: neighbors[vertex]) if(inGraph.Contains(vertex)) {
             if(partitions[vertex] != partitions[neighbor])
-                isBoundaryVertex = true;
+                isVertexBoundaryVertex = true;
         }
-        if(isBoundaryVertex) {
-            if(!(boundaryVertices.Contains(vertex))) {
+        if(isVertexBoundaryVertex) {
+            if(!(isBoundaryVertex(vertex))) {
                 // std::cout << "Not marked as boundary vertex" << std::endl;
                 return false;
             }
         } else {
-            if(boundaryVertices.Contains(vertex) && !neighborhoodChanged.Contains(vertex)) {
+            if(isBoundaryVertex(vertex) && !neighborhoodChanged.Contains(vertex)) {
                 // std::cout << "Marked as boundary vertex" << std::endl;
                 return false;
             }
