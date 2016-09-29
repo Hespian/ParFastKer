@@ -50,9 +50,7 @@ protected: // methods
     bool FoldVertex(int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, int &foldedVertexCount);
     bool LPReduction(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition, int &numLPReductions);
     void initReducableVertices(int numPartitions);
-    void updateNeighborhood(int const vertex);
     bool isTwoNeighborhoodInSamePartition(int const vertex, int const partition, ArraySet &remaining);
-    void updateAllNeighborhoods();
     void UpdateRemaining(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition);
 
     bool removeAllUnconfined(int const partition, ArraySet *remainingInsert, fast_set &closedNeighborhood, std::vector<int> &neighborhood, std::vector<int> &numNeighborsInS, std::vector<int> &neighborsInS, int &removedUnconfinedVerticesCount, int &numDiamondReductions);
@@ -77,7 +75,6 @@ protected: // members
     std::vector<int> partitions;
     std::vector<std::vector<int>> partition_nodes;
     std::vector<ArraySet> inGraphPerPartition;
-    SimpleSet boundaryVertices;
     MaximumMatching maximumMatching;
     std::vector<std::atomic_int> vertexDegree;
     std::vector<std::atomic_int> numCutEdges;

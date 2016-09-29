@@ -35,7 +35,6 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , neighbors(adjacencyArray.size())
  , inGraph(adjacencyArray.size(), true)
  , neighborhoodChanged(adjacencyArray.size(), false)
- , boundaryVertices(adjacencyArray.size(), false)
  , partitions(vertexPartitions)
  , independent_set(adjacencyArray.size(), -1)
  , maximumMatching(adjacencyArray)
@@ -245,8 +244,6 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
             if (numNeighborsInS[u] != 1)  {
                 continue;
             } 
-            // TODO
-            // updateNeighborhood(u);
             int neighborToAdd = -1;
             for (int const w : neighbors[u]) if(inGraph.Contains(w) && !closedNeighborhood.get(w)) {
                 if (neighborToAdd >= 0) {
@@ -371,8 +368,7 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
         int const neighbor = twinNeighbors[i];
         assert(partitions[neighbor] == partition);
         assert(neighbor != vertex);
-        // TODO: Still neccessary? (Yes when using atomics for degrees)
-        updateNeighborhood(neighbor);
+
         vMarkedVertices[neighbor] = true;
         int const neighborDegree = degree(neighbor);
         if(neighborDegree < smallesDegreeNeighborDegree) {
@@ -389,7 +385,6 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
         // TODO: Still neccessary? (Yes when using atomics for degrees)
         if(vMarkedVertices[possibleTwin]) continue;
         if(degree(possibleTwin) != 3) continue;
-        updateNeighborhood(possibleTwin);
         assert(partitions[possibleTwin] == partitions[vertex]);
         bool isTwin = true;
         int neighborCount(0);
@@ -664,11 +659,6 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     double startTime = omp_get_wtime();
     UpdateRemaining(remainingPerPartition, bufferPerPartition);
     double updateRemainingBeforeTime = omp_get_wtime();
-    #pragma omp parallel for
-    for(int vertex = 0; vertex < N; ++vertex) {
-        updateNeighborhood(vertex);
-    }
-    double updateNeighborhoodBeforetime = omp_get_wtime();
     maximumMatching.LoadGraph(neighbors, inGraph);
     double loadGraphTime = omp_get_wtime();
     maximumMatching.KarpSipserInit();
@@ -709,51 +699,19 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     UpdateRemaining(remainingPerPartition, bufferPerPartition);
     double updateRemainingAfterTime = omp_get_wtime();
 
-    #pragma omp parallel for
-    for(int vertex = 0; vertex < N; ++vertex) {
-        updateNeighborhood(vertex);
-    }
-
-    double updateNeighborhoodAfterTime = omp_get_wtime();
-
     int sizeAfter = inGraph.Size();
 
     /*std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
-    std::cout << "Time for updating neighborhoods (before reduction): " << updateNeighborhoodBeforetime - updateRemainingBeforeTime << std::endl;
-    std::cout << "Time for loading the graph: " << loadGraphTime - updateNeighborhoodBeforetime << std::endl;
+    std::cout << "Time for loading the graph: " << loadGraphTime - updateRemainingBeforeTime << std::endl;
     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
     std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
     std::cout << "Time for MarkReachableVertices: " << markVerticesTime - maximumMatchingTime << std::endl;
     std::cout << "Time for applying result: " << applyReductionTime - markVerticesTime << std::endl;
     std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingAfterTime - applyReductionTime << std::endl;
-    std::cout << "Time for updating neighborshoods (after reduction): " << updateNeighborhoodAfterTime - updateRemainingAfterTime << std::endl;
-    std::cout << "Total time: " << updateNeighborhoodAfterTime - startTime << std::endl;
+    std::cout << "Total time: " << updateRemainingAfterTime - startTime << std::endl;
     std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;*/
     numLPReductions += sizeBefore - sizeAfter;
     return changed;
-}
-
-void parallel_reductions::updateNeighborhood(int const vertex) {
-    assert(vertex < neighbors.size());
-    if(!neighborhoodChanged.Contains(vertex)) {
-        return;
-    }
-    neighborhoodChanged.Remove(vertex);
-
-    profilingStartClockUpdateNeighborhood(&profilingHelper, partitions[vertex], vertex);
-
-    int partition = partitions[vertex];
-    bool isBoundaryVertex = false;
-    for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-        assert(neighbor < neighbors.size());
-        if(partitions[neighbor] != partition) {
-            isBoundaryVertex = true;
-        }
-    }
-    if(!isBoundaryVertex) {
-        boundaryVertices.Remove(vertex);
-    }
-    profilingAddTimeUpdateNeighborhood(&profilingHelper, partitions[vertex]);
 }
 
 void parallel_reductions::reduce_graph_parallel() {
@@ -943,8 +901,6 @@ void parallel_reductions::reduce_graph_sequential() {
         }
     }
 
-    updateAllNeighborhoods();
-
     double time(0);
     int numIsolatedCliqueReductions(0);
     int numVertexFoldReductions(0);
@@ -992,16 +948,6 @@ void parallel_reductions::reduce_graph_sequential() {
     omp_set_num_threads(numThreads);
 }
 
-// TODO: Can be removed most likely
-void parallel_reductions::updateAllNeighborhoods() {
-    double startClock = omp_get_wtime();
-    #pragma omp parallel for
-    for(int vertex = 0; vertex < neighbors.size(); ++vertex)
-        updateNeighborhood(vertex);
-    double endClock = omp_get_wtime();
-    cout << "Time spent updating neighborhoods  : " << (endClock - startClock) << endl;
-}
-
 void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, vector<int> &tempInt1, vector<int> &tempInt2, fast_set &fastSet, vector<int> &tempIntDoubleSize, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount, int &numDiamondReductions)
 {
     double startClock = omp_get_wtime();
@@ -1016,7 +962,6 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             assert(inGraph.Contains(vertex));
             assert(partitions[vertex] == partition);
             assert(independent_set[vertex] == -1);
-            // updateNeighborhood(vertex);
             bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
             if (!reduction && m_bAllowVertexFolds) {
                 reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
@@ -1205,7 +1150,6 @@ bool parallel_reductions::removeAllTwin(int const partition, std::vector<Reducti
             continue;
         assert(partitions[vertex] == partition);
         assert(independent_set[vertex] == -1);
-        updateNeighborhood(vertex);
         bool reduction = removeTwin(partition, vertex, vReductions, *remainingInsert, vMarkedVertices, removedTwinCount, foldedTwinCount);
         if(!reduction) {
             remainingInsert->Insert(vertex);
@@ -1224,7 +1168,6 @@ bool parallel_reductions::RemoveAllIsolatedClique(int const partition, std::vect
             continue;
         assert(partitions[vertex] == partition);
         assert(independent_set[vertex] == -1);
-        updateNeighborhood(vertex);
         bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, *remainingInsert, vMarkedVertices, isolatedCliqueCount);
         if(!reduction) {
             remainingInsert->Insert(vertex);
@@ -1243,7 +1186,6 @@ bool parallel_reductions::FoldAllVertices(int const partition, std::vector<Reduc
             continue;
         assert(partitions[vertex] == partition);
         assert(independent_set[vertex] == -1);
-        updateNeighborhood(vertex);
         bool reduction = FoldVertex(partition, vertex, vReductions, *remainingInsert, foldedVertexCount);
         if(!reduction) {
             remainingInsert->Insert(vertex);
