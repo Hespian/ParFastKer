@@ -64,7 +64,7 @@ protected: // methods
     bool isBoundaryVertex(const int vertex);
 
     // Just for testing
-    bool checkBoundaryVertices();
+    bool checkDegrees();
 
 protected: // members
     std::vector<int> graph_to_kernel_map;
