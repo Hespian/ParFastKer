@@ -698,7 +698,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
 
     int sizeAfter = inGraph.Size();
 
-    std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
+/*    std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
     std::cout << "Time for loading the graph: " << loadGraphTime - updateRemainingBeforeTime << std::endl;
     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
     std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
@@ -707,7 +707,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingAfterTime - applyReductionTime << std::endl;
     std::cout << "Total time: " << updateRemainingAfterTime - startTime << std::endl;
     std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;
-    numLPReductions += sizeBefore - sizeAfter;
+*/    numLPReductions += sizeBefore - sizeAfter;
     return changed;
 }
 
