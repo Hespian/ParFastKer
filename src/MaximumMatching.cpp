@@ -61,6 +61,8 @@ MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyA
 	{
 		stacks[i] = std::vector<long>(G->n);
 	}
+
+    firstKarpSipser = true;
 }
 
 int MaximumMatching::VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree) {
@@ -674,9 +676,20 @@ void MaximumMatching::findMate(long u, graph* G, long* flag,long* mate, long* de
 	}
 }
 
+long MaximumMatching::KarpSipserInit(SimpleSet &inGraph) {
+    long result;
+    if(firstKarpSipser) {
+        result = KarpSipserInit1();
+    } else {
+        result = KarpSipserInit2(inGraph);
+    }
+    firstKarpSipser = false;
+    return result;
+}
+
 
 // Multithreaded  Karp-Sipser maximal matching
-long MaximumMatching::KarpSipserInit()
+long MaximumMatching::KarpSipserInit1()
 {
 	long nrows = G->nrows;
 	
@@ -739,6 +752,82 @@ long MaximumMatching::KarpSipserInit()
 	}
    	
 	return numUnmatchedU;
+}
+
+// Multithreaded  Karp-Sipser maximal matching
+long MaximumMatching::KarpSipserInit2(SimpleSet &inGraph)
+{
+    long nrows = G->nrows;
+    
+    long *endVertex = G->endV;
+    long *edgeStart = G->vtx_pointer;
+    long nrowsV = G->n;
+    long numUnmatchedU = 0;
+    
+    
+#pragma omp parallel for default(shared) schedule(static)
+    for(long i=0; i< nrowsV; i++)
+    {
+        long vertexMate = mate[i];
+        if(inGraph.Contains(i % nrows) && vertexMate >= 0 &&  inGraph.Contains(vertexMate % nrows)) {
+            flag[i] = 1;
+        } else {
+            flag[i] = 0;
+            mate[i] = -1;
+        }
+    }
+    
+    long degree1Tail = 0;
+    long degree1Count = 0;  
+    
+    
+    
+    // populate degree and degree1Vtx
+#pragma omp parallel for default(shared) schedule(static)//schedule(dynamic)
+    for(long u=0; u<nrows; u++)
+    {      
+        if(mate[u] >= 0) continue;
+        degree[u] = 0;
+        for(long i = edgeStart[u+1]; i < edgeStart[u]; ++i) {
+            if(mate[i] >= 0)
+                ++degree[u];
+        }
+        if(degree[u] == 1)
+        {
+            degree1Vtx[__sync_fetch_and_add(&degree1Count,1)] = u;
+            //flag[u] = 1; // means already taken 
+        }
+    }
+    
+    
+    
+#pragma omp parallel for default(shared) //schedule(dynamic,100)
+    for(long u=0; u<degree1Count; u++)
+    {
+        //findMate1(degree1Vtx[u],G,flag,mate,degree,degree1Vtx,&degree1Head);
+        findMate(degree1Vtx[u],G,flag,mate,degree);       
+    }
+    
+    
+    // process other vertices 
+#pragma omp parallel for default(shared) schedule(dynamic,100)//schedule(dynamic)
+    for(long u=0; u<nrows; u++)
+    {
+        if(flag[u] == 0 && degree[u]>0)
+            findMate(u,G,flag,mate,degree);   
+    }
+    
+#pragma omp parallel for default(shared) 
+    for(long u=0; u<nrows; u++)
+    {
+        
+        if(mate[u] == -1 && (edgeStart[u+1] > edgeStart[u]))
+        {
+            unmatchedU[__sync_fetch_and_add(&numUnmatchedU, 1)] = u;
+        }
+    }
+    
+    return numUnmatchedU;
 }
 
 void MaximumMatching::MarkReachableVertices() {

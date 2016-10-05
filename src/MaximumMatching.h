@@ -25,7 +25,7 @@ public:
 	~MaximumMatching();
 	void LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree);
 	long* MS_BFS_Graft();
-	long KarpSipserInit();
+	long KarpSipserInit(SimpleSet &inGraph);
 	void MarkReachableVertices();
 
 	std::vector<int> reachableVertices;
@@ -33,6 +33,8 @@ public:
 protected:
 	void findMate(long u, graph* G, long* flag,long* mate, long* degree);
 	int VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree);
+	long KarpSipserInit1();
+	long KarpSipserInit2(SimpleSet &inGraph);
 
 	// Just for testing
 	bool IsValidVertexCover();
@@ -54,6 +56,8 @@ protected:
 	long* degree1Vtx;
 
 	std::vector<std::vector<long>> stacks;
+
+	bool firstKarpSipser;
 
 };
 

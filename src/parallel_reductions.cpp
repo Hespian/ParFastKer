@@ -382,7 +382,6 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
     for(int possibleTwin: neighbors[smallestDegreeNeighbor]) if(inGraph.Contains(possibleTwin)) {
         if(possibleTwin == vertex) continue;
         if(partitions[possibleTwin] != partition) continue;
-        // TODO: Still neccessary? (Yes when using atomics for degrees)
         if(vMarkedVertices[possibleTwin]) continue;
         if(degree(possibleTwin) != 3) continue;
         assert(partitions[possibleTwin] == partitions[vertex]);
@@ -415,7 +414,6 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
     bool isNeighborhoodAdjacent = false;
     for(int i = 0; i < 3; ++i) {
         int const neighbor1 = twinNeighbors[i];
-        //TODO: Should be fine...?
         for(int neighbor2: neighbors[neighbor1]) {
             if(vMarkedVertices[neighbor2]) {
                 isNeighborhoodAdjacent = true;
@@ -652,7 +650,6 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
     }
 }
 
-// TODO: Mostly LoadGraph
 bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition, int &numLPReductions) {
     int sizeBefore = inGraph.Size();
     int N = neighbors.size();
@@ -661,7 +658,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
     double updateRemainingBeforeTime = omp_get_wtime();
     maximumMatching.LoadGraph(neighbors, inGraph, vertexDegree);
     double loadGraphTime = omp_get_wtime();
-    maximumMatching.KarpSipserInit();
+    maximumMatching.KarpSipserInit(inGraph);
     double initTime = omp_get_wtime();
     maximumMatching.MS_BFS_Graft();
     double maximumMatchingTime = omp_get_wtime();
@@ -856,7 +853,6 @@ void parallel_reductions::reduce_graph_parallel() {
     int sum_diamond = std::accumulate(numDiamondReductions.begin(), numDiamondReductions.end(), 0);
     int sum_reductions = sum_isolated_clique + sum_vertex_fold + sum_twin_removed + sum_twin_folded + sum_unconfined + sum_diamond + numLPReductions;
     assert(sum_reductions == neighbors.size() - inGraph.Size());
-    //TODO
     assert(checkDegrees());
 }
 
