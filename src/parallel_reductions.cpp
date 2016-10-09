@@ -23,7 +23,7 @@
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
 // Remove vertex from inGraph first!
-#define REMOVE_NEIGHBOR(partition, neighbor, vertex) {assert(!inGraph.Contains(vertex)); assert(partitions[vertex] == partition); vertexDegree[neighbor]--; if(partition != partitions[neighbor]) {numCutEdges[neighbor]--; neighborhoodChanged.Insert(neighbor);}}
+#define REMOVE_NEIGHBOR(partition, neighbor, vertex) {assert(!inGraph.Contains(vertex)); assert(partitions[vertex] == partition); if(partition == partitions[neighbor]) {vertexDegreeLocal[neighbor]--;} else {numCutEdges[neighbor]--; neighborhoodChanged.Insert(neighbor);}}
 #define REMOVE_VERTEX(partition, vertex) {inGraph.Remove(vertex); inGraphPerPartition[partition].Remove(vertex);}
 
 using namespace std;
@@ -38,7 +38,7 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
  , partitions(vertexPartitions)
  , independent_set(adjacencyArray.size(), -1)
  , maximumMatching(adjacencyArray)
- , vertexDegree(adjacencyArray.size())
+ , vertexDegreeLocal(adjacencyArray.size(), 0)
  , numCutEdges(adjacencyArray.size())
 #ifdef TIMERS
  , replaceTimer(0)
@@ -60,10 +60,11 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
     }
 
     for(int node = 0; node < N; ++node) {
-        vertexDegree[node] = neighbors[node].Size();
         for(auto neighbor: neighbors[node]) {
             if(partitions[neighbor] != partitions[node]) {
                 numCutEdges[node]++;
+            } else {
+                vertexDegreeLocal[node]++;
             }
         }
     }
@@ -121,8 +122,12 @@ void parallel_reductions::applyKernelSolution(std::vector<int> kernel_solution){
     }
 }
 
-int parallel_reductions::degree(int const vertex) {
-    return vertexDegree[vertex];
+int parallel_reductions::degreeLocal(int const vertex) {
+    return vertexDegreeLocal[vertex];
+}
+
+int parallel_reductions::degreeBoundaryVertex(int const vertex) {
+    return vertexDegreeLocal[vertex] + numCutEdges[vertex];
 }
 
 bool parallel_reductions::isBoundaryVertex(const int vertex) {
@@ -140,14 +145,14 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
         return false;
     }
 
-    int const deg = degree(vertex);
+    int const deg = degreeLocal(vertex);
 
     if(deg > ISOLATED_CLIQUE_MAX_NEIGHBORS)
         return false;
 
     for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         assert(partitions[neighbor] == partition);
-        if (degree(neighbor) < deg) {
+        if (degreeLocal(neighbor) < deg) {
             profilingAddTimeUnsuccessfulIsolatedCliqueDegree(&profilingHelper, partition);
             return false;
         }
@@ -349,7 +354,7 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
     if(isBoundaryVertex(vertex))
         return false;
 
-    if(degree(vertex) != 3)
+    if(degreeLocal(vertex) != 3)
         return false;
 
     int twinNeighbors[3];
@@ -370,7 +375,7 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
         assert(neighbor != vertex);
 
         vMarkedVertices[neighbor] = true;
-        int const neighborDegree = degree(neighbor);
+        int const neighborDegree = degreeBoundaryVertex(neighbor);
         if(neighborDegree < smallesDegreeNeighborDegree) {
             smallesDegreeNeighborDegree = neighborDegree;
             smallestDegreeNeighbor = neighbor;
@@ -383,7 +388,7 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
         if(possibleTwin == vertex) continue;
         if(partitions[possibleTwin] != partition) continue;
         if(vMarkedVertices[possibleTwin]) continue;
-        if(degree(possibleTwin) != 3) continue;
+        if(degreeBoundaryVertex(possibleTwin) != 3) continue;
         assert(partitions[possibleTwin] == partitions[vertex]);
         bool isTwin = true;
         int neighborCount(0);
@@ -470,7 +475,7 @@ afterNeighborhoodCheck:
                 neighbors[neighbor].Remove(twin);
                 // TODO
                 neighbors[neighbor].Remove(vertex);
-                neighborHoodSize += degree(neighbor);
+                neighborHoodSize += degreeLocal(neighbor);
             }
             neighbors[twin].Clear();
             neighbors[vertex].Clear();
@@ -521,9 +526,12 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 {
     assert(partitions[vertex] == partition);
 
+    if(isBoundaryVertex(vertex))
+        return false;
+
     profilingStartClock(&profilingHelper, partition, vertex);
 
-    if(degree(vertex) != 2) {
+    if(degreeLocal(vertex) != 2) {
         profilingAddTimeUnsuccessfulFoldDegree(&profilingHelper, partition);
         return false;
     }
@@ -567,8 +575,8 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     reduction.AddNeighbor(vertex2);
 
     neighbors[vertex].Clear();
-    int const vertex1degree = degree(vertex1);
-    int const vertex2degree = degree(vertex2);
+    int const vertex1degree = degreeLocal(vertex1);
+    int const vertex2degree = degreeLocal(vertex2);
     neighbors[vertex].Resize(vertex1degree + vertex2degree);
     // neighbors[vertex1].Remove(vertex);
     // neighbors[vertex2].Remove(vertex);
@@ -578,7 +586,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         if (neighbor1 == vertex) continue;
         // TODO: is it possible to not remove this?
         neighbors[neighbor1].Remove(vertex1);
-        vertexDegree[neighbor1]--;
+        vertexDegreeLocal[neighbor1]--;
         neighbors[vertex].Insert(neighbor1);
         assert(partitions[vertex] == partitions[neighbor1]);
         INSERT_REMAINING(partition, remaining, neighbor1);
@@ -592,7 +600,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         if (neighbor2 == vertex) continue;
         // TODO: is it possible to not remove this?
         neighbors[neighbor2].Remove(vertex2);
-        vertexDegree[neighbor2]--;
+        vertexDegreeLocal[neighbor2]--;
         neighbors[vertex].Insert(neighbor2);
         assert(partitions[vertex] == partitions[neighbor2]);
         INSERT_REMAINING(partition, remaining, neighbor2);
@@ -604,11 +612,11 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     
     for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         if(!neighbors[neighbor].Contains(vertex))
-            vertexDegree[neighbor]++;
+            vertexDegreeLocal[neighbor]++;
         neighbors[neighbor].Insert(vertex);
     }
 
-    vertexDegree[vertex] = neighbors[vertex].Size();
+    vertexDegreeLocal[vertex] = neighbors[vertex].Size();
 
     INSERT_REMAINING(partition, remaining, vertex);
     // remaining.Insert(vertex);
@@ -651,6 +659,7 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
 }
 
 bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition, int &numLPReductions) {
+    return false;
     int sizeBefore = inGraph.Size();
     int N = neighbors.size();
     double startTime = omp_get_wtime();
@@ -675,7 +684,8 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
             independent_set[vertex] = 1;
             inGraph.Remove(vertex);
             for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-                vertexDegree[neighbor]--;
+                // TODO
+                // vertexDegree[neighbor]--;
                 if(partitions[vertex] != partitions[neighbor])
                     numCutEdges[neighbor]--;
                 neighborhoodChanged.Insert(neighbor);

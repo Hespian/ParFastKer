@@ -58,7 +58,8 @@ protected: // methods
     bool RemoveAllIsolatedClique(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
     bool FoldAllVertices(int const partition, std::vector<Reduction> &vReductions, ArraySet *remainingUse, ArraySet *remainingInsert, int &foldedVertexCount);
 
-    int degree(int const vertex);
+    int degreeLocal(int const vertex);
+    int degreeBoundaryVertex(int const vertex);
     bool isBoundaryVertex(const int vertex);
 
     // Just for testing
@@ -76,7 +77,7 @@ protected: // members
     std::vector<std::vector<int>> partition_nodes;
     std::vector<ArraySet> inGraphPerPartition;
     MaximumMatching maximumMatching;
-    std::vector<std::atomic_int> vertexDegree;
+    std::vector<int> vertexDegreeLocal;
     std::vector<std::atomic_int> numCutEdges;
 #ifdef TIMERS
     clock_t replaceTimer;
