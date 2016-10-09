@@ -2,7 +2,7 @@
 #include "MaximumMatching.h"
 
 MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray) {
-	G = (graph *) malloc(sizeof(graph));
+        G = (graph *) malloc(sizeof(graph));
 	G->weight = NULL;
 	long numVertices = adjacencyArray.size();
 	G->vtx_pointer = new long[numVertices * 2 + 1];
@@ -65,17 +65,17 @@ MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyA
     firstKarpSipser = true;
 }
 
-int MaximumMatching::VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree) {
+int MaximumMatching::VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &numCutEdges, std::vector<int> &vertexDegreeLocal) {
     if(!inGraph.Contains(vertex))
         return 0;
-    return vertexDegree[vertex];
+    return numCutEdges[vertex] + vertexDegreeLocal[vertex];
 }
 
-void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree) {
+void MaximumMatching::LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &numCutEdges, std::vector<int> &vertexDegreeLocal) {
 	assert(neighbors.size() == G->nrows);
 	#pragma omp parallel for
 	for(int i = 0; i < G->nrows; ++i ) {
-        int deg = VertexDegree(i, neighbors, inGraph, vertexDegree);
+	  int deg = VertexDegree(i, neighbors, inGraph, numCutEdges, vertexDegreeLocal);
 		degree[i] = deg;
 		degree[i + G->nrows] = deg;
 	}

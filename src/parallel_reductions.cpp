@@ -489,10 +489,10 @@ afterNeighborhoodCheck:
                     assert(!vMarkedVertices[neighbor2]);
                     // TODO
                     neighbors[neighbor2].Remove(neighbor1);
-                    vertexDegree[neighbor2]--;
+                    vertexDegreeLocal[neighbor2]--;
                     neighbors[vertex].Insert(neighbor2);
                     if(!neighbors[neighbor2].Contains(vertex))
-                        vertexDegree[neighbor2]++;
+                        vertexDegreeLocal[neighbor2]++;
                     neighbors[neighbor2].Insert(vertex);
                     remaining.Insert(neighbor2);
                 }
@@ -500,7 +500,7 @@ afterNeighborhoodCheck:
                 REMOVE_VERTEX(partition, neighbor1);
                 remaining.Remove(neighbor1);
             }
-            vertexDegree[vertex] = neighbors[vertex].Size();
+            vertexDegreeLocal[vertex] = neighbors[vertex].Size();
             REMOVE_VERTEX(partition, twin);
             assert(!isBoundaryVertex(twin));
             remaining.Remove(twin);
@@ -650,6 +650,13 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
             else if(neighborhoodChanged.Contains(vertex)) {
                 remaining.Insert(vertex);
             }
+	    int deg = 0;
+	    for(int neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+		if(partitions[neighbor] == partition) {
+		  deg++;
+		}
+	      }
+	      vertexDegreeLocal[vertex] = deg;
         }
         for(int i = 0; i < numVerticesRemoved; ++i) {
             int vertex = buffer[i];
@@ -659,13 +666,13 @@ void parallel_reductions::UpdateRemaining(vector<ArraySet> &remainingPerPartitio
 }
 
 bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition, int &numLPReductions) {
-    return false;
     int sizeBefore = inGraph.Size();
     int N = neighbors.size();
     double startTime = omp_get_wtime();
     UpdateRemaining(remainingPerPartition, bufferPerPartition);
     double updateRemainingBeforeTime = omp_get_wtime();
-    maximumMatching.LoadGraph(neighbors, inGraph, vertexDegree);
+    //TODO
+    maximumMatching.LoadGraph(neighbors, inGraph, numCutEdges, vertexDegreeLocal);
     double loadGraphTime = omp_get_wtime();
     maximumMatching.KarpSipserInit(inGraph);
     double initTime = omp_get_wtime();
@@ -871,12 +878,13 @@ bool parallel_reductions::checkDegrees() {
         int deg = 0;
         int cutEdges = 0;
         for(int const neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-            deg++;
             if(partitions[vertex] != partitions[neighbor])
                 cutEdges++;
+	    else
+	      deg++;
         }
-        if(vertexDegree[vertex] != deg) {
-            std::cout << "Vertex " << vertex << " has degree " << deg << " but vertexDegree[vertex] has value " << vertexDegree[vertex] << " number of elements in neighbors[vertex]: " << neighbors[vertex].Size() << std::endl;
+        if(vertexDegreeLocal[vertex] != deg) {
+            std::cout << "Vertex " << vertex << " has degree " << deg << " but vertexDegreeLocal[vertex] has value " << vertexDegreeLocal[vertex] << " number of elements in neighbors[vertex]: " << neighbors[vertex].Size() << std::endl;
             return false;
         }
         if(numCutEdges[vertex] != cutEdges){

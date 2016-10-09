@@ -23,7 +23,7 @@ public:
 
 	MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray);
 	~MaximumMatching();
-	void LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree);
+	void LoadGraph(std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &numCutEdges, std::vector<int> &vertexDegreeLocal);
 	long* MS_BFS_Graft();
 	long KarpSipserInit(SimpleSet &inGraph);
 	void MarkReachableVertices();
@@ -32,7 +32,7 @@ public:
 
 protected:
 	void findMate(long u, graph* G, long* flag,long* mate, long* degree);
-	int VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &vertexDegree);
+	int VertexDegree(const int vertex, std::vector<SparseArraySet> &neighbors, SimpleSet &inGraph, std::vector<std::atomic_int> &numCutEdges, std::vector<int> &vertexDegreeLocal);
 	long KarpSipserInit1();
 	long KarpSipserInit2(SimpleSet &inGraph);
 
