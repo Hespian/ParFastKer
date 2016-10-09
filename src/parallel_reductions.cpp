@@ -919,6 +919,7 @@ void parallel_reductions::reduce_graph_sequential() {
     inGraphPerPartition = vector<ArraySet>(1);
     inGraphPerPartition[0] = ArraySet(N);
     for(int vertex = 0; vertex < N; ++vertex) {
+      vertexDegreeLocal[vertex] += numCutEdges[vertex];
         numCutEdges[vertex] = 0;
         partitions[vertex] = 0;
         partition_nodes[0].push_back(vertex);
