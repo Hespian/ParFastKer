@@ -17,8 +17,6 @@
 #include <limits.h>
 #include <functional>
 
-#include "kaHIP_interface.h"
-
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
