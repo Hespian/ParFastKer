@@ -16,7 +16,7 @@ ADD_DEFINITIONS(-Wreturn-type)
 # Inlcude for some machines
 include_directories(/usr/include/mpi)
  
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp" "extern/KaHIP/lib/io/*.cpp")
 
 # Include directories for executable
 include_directories(extern/KaHIP)
@@ -66,24 +66,13 @@ list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURC
 list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
 add_executable(sequential_benchmark_reduction_wise ${SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES})
 
-# Additional include directories for libkahip
-include_directories(extern/KaHIP/lib/partition)
-include_directories(extern/KaHIP/lib/partition/uncoarsening/refinement/quotient_graph_refinement/flow_refinement)
-
-# Build the KaHIP library
-file(GLOB_RECURSE lib_kahip_files "extern/KaHIP/*.cpp")
-add_library(libkahip STATIC ${lib_kahip_files})
 
 # Link libraries
 target_link_libraries(test_correctness argtable2)
-target_link_libraries(test_correctness libkahip)
 target_link_libraries(test_correctness gomp)
 target_link_libraries(benchmark argtable2)
-target_link_libraries(benchmark libkahip)
 target_link_libraries(benchmark gomp)
 target_link_libraries(sequential_benchmark argtable2)
-target_link_libraries(sequential_benchmark libkahip)
 target_link_libraries(sequential_benchmark gomp)
 target_link_libraries(sequential_benchmark_reduction_wise argtable2)
-target_link_libraries(sequential_benchmark_reduction_wise libkahip)
 target_link_libraries(sequential_benchmark_reduction_wise gomp)
