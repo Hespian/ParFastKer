@@ -31,6 +31,45 @@ def writeDegreeFile(inputFilePath, outputFilePath):
         inputFile.close()
         outputFile.close()
 
+def writeTwoNeighborhoodFile(inputFilePath, outputFilePath):
+    if not os.path.exists(outputFilePath):
+        inputFile = open(inputFilePath, "r")
+
+        number_nodes = 0
+        number_edges = 0
+        edges_counted = 0
+        adjacency = []
+        node = 0
+        for line in inputFile:
+            args = line.strip().split()
+            if node == 0:
+                number_nodes = int(args[0])
+                number_edges = int(args[1])
+                adjacency = [[] for _ in range(0, number_nodes + 1)]
+                adjacency[0] = [str(number_nodes), str(number_edges)]
+            else:
+                adjacency[node] = args
+                edges_counted += len(args)
+            node += 1
+        if edges_counted < number_edges:
+            print "Found less edges than specified"
+            sys.exit(0)
+        inputFile.close()
+
+        weight = [0] * (number_nodes + 1)
+        for i in range(1, node):
+            for j in adjacency[i]:
+                neighbor = int(j)
+                neighborDegree = len(adjacency[neighbor])
+                weight[i] += neighborDegree
+
+        outputFile = open(outputFilePath, "w")
+        outputFile.write(str(number_nodes) + " " + str(number_edges) + " 010\n")
+        for i in range(1, node):
+            outputFile.write(str(weight[i]) + " " + ' '.join(adjacency[i]) + "\n")
+
+        outputFile.close()
+
 def writeCustomWeightFile(graphFilePath, weightsFilePath, outputFilePath):
     if not os.path.exists(outputFilePath):
         graphFile = open(graphFilePath, "r")
@@ -90,6 +129,13 @@ for file in os.listdir(graphDir):
 
         writeDegreeFile(graphPath, weightedGraphDegreeFilePath)
         partitionGraph(weightedGraphDegreeFilePath, targetDirWeighDegree)
+
+        # Weight two neighborhood size
+        targetDirWeighTwoNeighborhood = os.path.join(partitionsDir, "weight_2_neighborhood")
+        makedir(targetDirWeighTwoNeighborhood)
+        weightedGraphTwoNeighborhoodFilePath = os.path.join(weightedGraphsDir, file) + "-weighted-2-neighborhood.graph"
+        writeTwoNeighborhoodFile(graphPath, weightedGraphTwoNeighborhoodFilePath)
+        partitionGraph(weightedGraphTwoNeighborhoodFilePath, targetDirWeighTwoNeighborhood)
 
         # Custom weights
         if file + ".weights" in customWeightFiles:
