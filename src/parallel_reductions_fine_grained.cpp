@@ -18,6 +18,7 @@
 #include <string.h>
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
+#define maxTempSize 8192
 
 using namespace std;
 
@@ -98,82 +99,94 @@ int parallel_reductions_fine_grained::degree(int const vertex) {
 }
 
 
-/*bool parallel_reductions_fine_grained::RemoveIsolatedClique(int const partition, int const vertex, vector<Reduction> &vReductions, ArraySet &remaining, vector<bool> &vMarkedVertices, int &isolatedCliqueCount)
+bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>> &vMarkedVerticesPerThread, vector<int> &toRemove, vector<vector<int>> &temp)
 {
-    assert(partitions[vertex] == partition);
+    int const N = neighbors.size();
+    int toRemoveCount = 0;
+    int numThreads;
+    #pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+    vector<int> tempSize = vector<int>(numThreads, 0);
+    #pragma omp parallel for
+    for(int vertex = 0; vertex < N; vertex++) if(inGraph.Contains(vertex)) {
+        {
+            int tid = omp_get_thread_num();
+            vector<bool> &vMarkedVertices = vMarkedVerticesPerThread[tid];
+            int const deg = degree(vertex);
 
-    profilingStartClock(&profilingHelper, partition, vertex);
+            if(deg > ISOLATED_CLIQUE_MAX_NEIGHBORS)
+                goto nextVertex;
 
-    if(isBoundaryVertex(vertex)) {
-        profilingAddTimeUnsuccessfulIsolatedCliquePartition(&profilingHelper, partition);
-        return false;
+            for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+                if (degree(neighbor) < deg) {
+                    goto nextVertex;
+                } else if (degree(neighbor) == deg && neighbor < vertex) {
+                    // If it is an isolated clique, the other vertex should be reduced
+                    goto nextVertex;
+                }
+            }
+
+            bool superSet(true);
+
+            for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+                for (int const nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
+                    vMarkedVertices[nNeighbor] = true;
+                }
+                vMarkedVertices[neighbor] = true;
+
+                for (int const neighbor2 : neighbors[vertex]) if(inGraph.Contains(neighbor2)) {
+                    superSet = superSet && vMarkedVertices[neighbor2];
+                }
+
+                for (int const nNeighbor : neighbors[neighbor]) if(vMarkedVertices[nNeighbor]) {
+                    vMarkedVertices[nNeighbor] = false;
+                }
+                vMarkedVertices[neighbor] = false;
+
+                if (!superSet) {
+                    goto nextVertex;
+                }
+            }
+            if (superSet) {
+                temp[tid][tempSize[tid]++] = vertex;
+                if(tempSize[tid] == maxTempSize) {
+                    int startindex = __sync_fetch_and_add(&toRemoveCount, maxTempSize);
+                    memcpy(&(toRemove[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
+                    tempSize[tid] = 0;
+                }
+            }
+        }
+        nextVertex: ;
     }
 
-    int const deg = degree(vertex);
-
-    if(deg > ISOLATED_CLIQUE_MAX_NEIGHBORS)
-        return false;
-
-    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-        assert(partitions[neighbor] == partition);
-        if (degree(neighbor) < deg) {
-            profilingAddTimeUnsuccessfulIsolatedCliqueDegree(&profilingHelper, partition);
-            return false;
-        }
+    #pragma omp parallel for
+    for(int tid = 0; tid < numThreads; ++tid) {
+        int startindex = __sync_fetch_and_add(&toRemoveCount, tempSize[tid]);
+        memcpy(&(toRemove[startindex]), &(temp[tid][0]), tempSize[tid] * sizeof(int));
+        tempSize[tid] = 0;
     }
+    std::cout << "Done with finding isolated cliques! ToRemove: " << toRemoveCount << std::endl;
 
-    bool superSet(true);
 
-    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-        // TODO Should be possible faster
-        for (int const nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
-            vMarkedVertices[nNeighbor] = true;
-        }
-        vMarkedVertices[neighbor] = true;
-
-        for (int const neighbor2 : neighbors[vertex]) if(inGraph.Contains(neighbor2)) {
-            superSet = superSet && vMarkedVertices[neighbor2];
-        }
-
-        for (int const nNeighbor : neighbors[neighbor]) if(vMarkedVertices[nNeighbor]) {
-            vMarkedVertices[nNeighbor] = false;
-        }
-        vMarkedVertices[neighbor] = false;
-
-        if (!superSet) {
-            profilingAddTimeUnsuccessfulIsolatedCliqueNoClique(&profilingHelper, partition);
-            return false;
-        }
-    }
-    if (superSet) {
-        // Reduction reduction(ISOLATED_VERTEX);
-        // reduction.SetVertex(vertex);
+    #pragma omp parallel for
+    for(int i = 0; i < toRemoveCount; ++i) {
+        int vertex = toRemove[i];
+        assert(inGraph.Contains(vertex));
         independent_set[vertex] = 0;
-        REMOVE_VERTEX(partition, vertex);
+        inGraph.Remove(vertex);
         for (const int neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-            assert(partitions[neighbor] == partition);
-            REMOVE_VERTEX(partition, neighbor);
-            remaining.Remove(neighbor);
+            inGraph.Remove(neighbor);
             independent_set[neighbor] = 1;
             for (const int nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
-                // assert(neighbors[nNeighbor].Contains(neighbor));
-                REMOVE_NEIGHBOR(partition, nNeighbor, neighbor);
-                INSERT_REMAINING(partition, remaining, nNeighbor);
+                vertexDegree[nNeighbor]--;
             }
-            neighbors[neighbor].Clear();
-            assert(!inGraph.Contains(neighbor));
         }
-        isolatedCliqueCount += deg + 1;
-        neighbors[vertex].Clear();
-
-        // vReductions.emplace_back(std::move(reduction));
-
-        profilingAddTimeSuccessfulIsolatedClique(&profilingHelper, partition);
-        return true;
     }
-    assert(false);
-    return false;
-}*/
+
+    return toRemoveCount > 0;
+}
 
 
 
@@ -232,10 +245,9 @@ int parallel_reductions_fine_grained::degree(int const vertex) {
 //     return changed;
 // }
 
-bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove) {
+bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove, vector<vector<int>> &temp) {
     int candidateCount = 0;
     int toRemoveCount = 0;
-    int const maxTempSize = 1024;
 
     int numThreads;
     #pragma omp parallel
@@ -243,17 +255,11 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
         numThreads = omp_get_num_threads();
     }
 
-    vector<vector<int>> temp(numThreads);
     vector<int> tempSize(numThreads, 0);
 
+    int const N = neighbors.size();
     #pragma omp parallel for
-    for(int tid = 0; tid < numThreads; ++tid) {
-        temp[tid] = vector<int>(maxTempSize);
-    }
-
-
-    #pragma omp parallel for
-    for(int vertex = 0; vertex < neighbors.size(); ++vertex) if(inGraph.Contains(vertex)) {
+    for(int vertex = 0; vertex < N; ++vertex) if(inGraph.Contains(vertex)) {
         {
             int tid = omp_get_thread_num();
             fast_set &closedNeighborhood = closedNeighborhoodPerThread[tid];
@@ -290,7 +296,7 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
                     if (neighborToAdd == -1) {
                         // There is a vertex in N(u) that doesn't have any neighbors outside of N[S]
                         // Input vertex is unconfined
-                        temp[tid][__sync_fetch_and_add(&(tempSize[tid]), 1)] = vertex;
+                        temp[tid][tempSize[tid]++] = vertex;
                         if(tempSize[tid] == maxTempSize) {
                             int startindex = __sync_fetch_and_add(&candidateCount, maxTempSize);
                             memcpy(&(candidates[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
@@ -370,7 +376,7 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
                         if(isCandidate[u] && u < vertex) {
                             continue;
                         }
-                        temp[tid][__sync_fetch_and_add(&(tempSize[tid]), 1)] = vertex;
+                        temp[tid][tempSize[tid]++] = vertex;
                         if(tempSize[tid] == maxTempSize) {
                             int startindex = __sync_fetch_and_add(&toRemoveCount, maxTempSize);
                             memcpy(&(toRemove[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
@@ -447,6 +453,8 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
     vector<int> candidates(m_AdjacencyArray.size());
     vector<int> toRemove(m_AdjacencyArray.size());
     vector<char> isCandidate = vector<char>(m_AdjacencyArray.size());
+    vector<vector<int>> tempBuffer(numThreads);
+    vector<vector<bool>> markedVerticesPerThread(numThreads);
     for(int threadId = 0; threadId < numThreads; threadId++) {
         vector<int> tempInt1 = vector<int>(m_AdjacencyArray.size());
         tempInt1PerThread[threadId] = tempInt1;
@@ -456,6 +464,8 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
         fastSetPerThread[threadId] = fastSet;
         vector<int> tempIntDoubleSize = vector<int>(m_AdjacencyArray.size() * 2);
         tempIntDoubleSizePerThread[threadId] = tempIntDoubleSize;
+        tempBuffer[threadId] = vector<int>(maxTempSize);
+        markedVerticesPerThread[threadId] = vector<bool>(m_AdjacencyArray.size(), false);
     }
 
     int numUnconfinedReductions = 0;
@@ -467,17 +477,21 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
     double tmpClock;
     double LPTime = 0;
     double unconfinedTime = 0;
+    double isolatedCliqueTime = 0;
 
     int numIterations = 0;
     while(true) {
         numIterations++;
-        // int sizeBefore = inGraph.Size();
+
+        // tmpClock = omp_get_wtime();
+        // bool changedUnconfined = RemoveUnconfined(fastSetPerThread, tempInt1PerThread, tempInt2PerThread, tempIntDoubleSizePerThread, isCandidate, candidates, toRemove, tempBuffer);
+        // unconfinedTime += omp_get_wtime() - tmpClock;
+        // if(changedUnconfined) continue;
+
         tmpClock = omp_get_wtime();
-        bool changed = RemoveUnconfined(fastSetPerThread, tempInt1PerThread, tempInt2PerThread, tempIntDoubleSizePerThread, isCandidate, candidates, toRemove);
-        unconfinedTime += omp_get_wtime() - tmpClock;
-        // int sizeAfter = inGraph.Size();
-        // numUnconfinedReductions += sizeBefore - sizeAfter;
-        if(changed) continue;
+        bool changedIsolatedClique = RemoveIsolatedClique(markedVerticesPerThread, toRemove, tempBuffer);
+        isolatedCliqueTime += omp_get_wtime() - tmpClock;
+        if(changedIsolatedClique) continue;
         break;
     }
     std::cout << "Num iterations: " << numIterations << std::endl;

@@ -36,9 +36,8 @@ public:
     size_t size() const { return inGraph.Size(); }
 
 protected: // methods
-    bool RemoveUnconfined(std::vector<fast_set> &closedNeighborhoodPerThread, std::vector<std::vector<int>> &neighborhoodPerThread, std::vector<std::vector<int>> &numNeighborsInSPerThread, std::vector<std::vector<int>> &neighborsInSPerThread, std::vector<char> &isCandidate, std::vector<int> &candidates, std::vector<int> &toRemove);
-    // bool RemoveIsolatedClique    (int const partition, int const vertex, std::vector<Reduction> &vReductions, ArraySet &remaining, std::vector<bool> &vMarkedVertices, int &isolatedCliqueCount);
-    // bool LPReduction(std::vector<ArraySet> &remainingPerPartition, std::vector<std::vector<int>> &bufferPerPartition, int &numLPReductions);
+    bool RemoveUnconfined(std::vector<fast_set> &closedNeighborhoodPerThread, std::vector<std::vector<int>> &neighborhoodPerThread, std::vector<std::vector<int>> &numNeighborsInSPerThread, std::vector<std::vector<int>> &neighborsInSPerThread, std::vector<char> &isCandidate, std::vector<int> &candidates, std::vector<int> &toRemove, std::vector<std::vector<int>> &temp);
+    bool RemoveIsolatedClique(std::vector<std::vector<bool>> &vMarkedVerticesPerThread, std::vector<int> &toRemove, std::vector<std::vector<int>> &temp);
 
     int degree(int const vertex);
 
