@@ -38,6 +38,7 @@ public:
 protected: // methods
     bool RemoveUnconfined(std::vector<fast_set> &closedNeighborhoodPerThread, std::vector<std::vector<int>> &neighborhoodPerThread, std::vector<std::vector<int>> &numNeighborsInSPerThread, std::vector<std::vector<int>> &neighborsInSPerThread, std::vector<char> &isCandidate, std::vector<int> &candidates, std::vector<int> &toRemove, std::vector<std::vector<int>> &temp);
     bool RemoveIsolatedClique(std::vector<std::vector<bool>> &vMarkedVerticesPerThread, std::vector<int> &toRemove, std::vector<std::vector<int>> &temp);
+    bool LPReduction();
 
     int degree(int const vertex);
 

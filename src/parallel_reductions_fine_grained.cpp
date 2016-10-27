@@ -167,7 +167,7 @@ bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>>
         memcpy(&(toRemove[startindex]), &(temp[tid][0]), tempSize[tid] * sizeof(int));
         tempSize[tid] = 0;
     }
-    std::cout << "Done with finding isolated cliques! ToRemove: " << toRemoveCount << std::endl;
+    // std::cout << "Done with finding isolated cliques! ToRemove: " << toRemoveCount << std::endl;
 
 
     #pragma omp parallel for
@@ -190,60 +190,56 @@ bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>>
 
 
 
-// bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, vector<vector<int>> &bufferPerPartition, int &numLPReductions) {
-//     int sizeBefore = inGraph.Size();
-//     int N = neighbors.size();
-//     double startTime = omp_get_wtime();
-//     maximumMatching.LoadGraph(neighbors, inGraph, vertexDegree);
-//     double loadGraphTime = omp_get_wtime();
-//     maximumMatching.KarpSipserInit(inGraph);
-//     double initTime = omp_get_wtime();
-//     maximumMatching.MS_BFS_Graft();
-//     double maximumMatchingTime = omp_get_wtime();
-//     maximumMatching.MarkReachableVertices();
-//     double markVerticesTime = omp_get_wtime();
-//     bool changed = false;
-// #pragma omp parallel for
-//     for(int vertex = 0; vertex < N; ++vertex) {
-//         if(!inGraph.Contains(vertex))
-//             continue;
-//         if(maximumMatching.reachableVertices[vertex] == 0 && maximumMatching.reachableVertices[vertex + N] > 0) {
-//             changed = true;
-//             // vertex is in the vertex cover
-//             independent_set[vertex] = 1;
-//             inGraph.Remove(vertex);
-//             for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-//                 vertexDegree[neighbor]--;
-//                 if(partitions[vertex] != partitions[neighbor])
-//                     numCutEdges[neighbor]--;
-//             }
-//             neighbors[vertex].Clear();
-//         } else if (maximumMatching.reachableVertices[vertex] > 0 && maximumMatching.reachableVertices[vertex + N] == 0) {
-//             changed = true;
-//             // vertex is in the independent set
-//             // Nothing to to for the neighbors because they get removed too (two vertices on the same edge can't be 0)
-//             independent_set[vertex] = 0;
-//             inGraph.Remove(vertex);
-//             neighbors[vertex].Clear();
-//         }
-//         // else: We don't know it
-//     }
-//     double applyReductionTime = omp_get_wtime();
+bool parallel_reductions_fine_grained::LPReduction() {
+    int N = neighbors.size();
+    double startTime = omp_get_wtime();
+    maximumMatching.LoadGraph(neighbors, inGraph, vertexDegree);
+    double loadGraphTime = omp_get_wtime();
+    maximumMatching.KarpSipserInit(inGraph);
+    double initTime = omp_get_wtime();
+    maximumMatching.MS_BFS_Graft();
+    double maximumMatchingTime = omp_get_wtime();
+    maximumMatching.MarkReachableVertices();
+    double markVerticesTime = omp_get_wtime();
+    bool changed = false;
+#pragma omp parallel for
+    for(int vertex = 0; vertex < N; ++vertex) {
+        if(!inGraph.Contains(vertex))
+            continue;
+        if(maximumMatching.reachableVertices[vertex] == 0 && maximumMatching.reachableVertices[vertex + N] > 0) {
+            changed = true;
+            // vertex is in the vertex cover
+            independent_set[vertex] = 1;
+            inGraph.Remove(vertex);
+            for(int neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+                vertexDegree[neighbor]--;
+            }
+            neighbors[vertex].Clear();
+        } else if (maximumMatching.reachableVertices[vertex] > 0 && maximumMatching.reachableVertices[vertex + N] == 0) {
+            changed = true;
+            // vertex is in the independent set
+            // Nothing to to for the neighbors because they get removed too (two vertices on the same edge can't be 0)
+            independent_set[vertex] = 0;
+            inGraph.Remove(vertex);
+            neighbors[vertex].Clear();
+        }
+        // else: We don't know it
+    }
+    double applyReductionTime = omp_get_wtime();
 
-//     int sizeAfter = inGraph.Size();
+    int sizeAfter = inGraph.Size();
 
-// /*    std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
-//     std::cout << "Time for loading the graph: " << loadGraphTime - updateRemainingBeforeTime << std::endl;
-//     std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
-//     std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
-//     std::cout << "Time for MarkReachableVertices: " << markVerticesTime - maximumMatchingTime << std::endl;
-//     std::cout << "Time for applying result: " << applyReductionTime - markVerticesTime << std::endl;
-//     std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingAfterTime - applyReductionTime << std::endl;
-//     std::cout << "Total time: " << updateRemainingAfterTime - startTime << std::endl;
-//     std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;
-// */    numLPReductions += sizeBefore - sizeAfter;
-//     return changed;
-// }
+/*    std::cout << "Time for UpdateRemaining (before reduction): " << updateRemainingBeforeTime - startTime << std::endl;
+    std::cout << "Time for loading the graph: " << loadGraphTime - updateRemainingBeforeTime << std::endl;
+    std::cout << "Time for KarpSipserInit: " << initTime - loadGraphTime << std::endl;
+    std::cout << "Time for MS_BFS_Graft: " << maximumMatchingTime - initTime << std::endl;
+    std::cout << "Time for MarkReachableVertices: " << markVerticesTime - maximumMatchingTime << std::endl;
+    std::cout << "Time for applying result: " << applyReductionTime - markVerticesTime << std::endl;
+    std::cout << "Time for UpdateRemaining (after reduction): " << updateRemainingAfterTime - applyReductionTime << std::endl;
+    std::cout << "Total time: " << updateRemainingAfterTime - startTime << std::endl;
+    std::cout << "Vertices removed by LP reduction : " << sizeBefore - sizeAfter << std::endl;
+*/  return changed;
+}
 
 bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove, vector<vector<int>> &temp) {
     int candidateCount = 0;
@@ -331,7 +327,7 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
         memcpy(&(candidates[startindex]), &(temp[tid][0]), tempSize[tid] * sizeof(int));
         tempSize[tid] = 0;
     }
-    std::cout << "Done with run 1! Candidates: " << candidateCount << std::endl;
+    // std::cout << "Done with run 1! Candidates: " << candidateCount << std::endl;
 
 
     #pragma omp parallel for
@@ -416,7 +412,7 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
         memcpy(&(toRemove[startindex]), &(temp[tid][0]), tempSize[tid] * sizeof(int));
         tempSize[tid] = 0;
     }
-    std::cout << "Done with run 2! ToRemove: " << toRemoveCount << std::endl;
+    // std::cout << "Done with run 2! ToRemove: " << toRemoveCount << std::endl;
 
     #pragma omp parallel for
     for(int i = 0; i < candidateCount; ++i) {
@@ -483,15 +479,20 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
     while(true) {
         numIterations++;
 
-        // tmpClock = omp_get_wtime();
-        // bool changedUnconfined = RemoveUnconfined(fastSetPerThread, tempInt1PerThread, tempInt2PerThread, tempIntDoubleSizePerThread, isCandidate, candidates, toRemove, tempBuffer);
-        // unconfinedTime += omp_get_wtime() - tmpClock;
-        // if(changedUnconfined) continue;
-
         tmpClock = omp_get_wtime();
         bool changedIsolatedClique = RemoveIsolatedClique(markedVerticesPerThread, toRemove, tempBuffer);
         isolatedCliqueTime += omp_get_wtime() - tmpClock;
         if(changedIsolatedClique) continue;
+
+        tmpClock = omp_get_wtime();
+        bool changedUnconfined = RemoveUnconfined(fastSetPerThread, tempInt1PerThread, tempInt2PerThread, tempIntDoubleSizePerThread, isCandidate, candidates, toRemove, tempBuffer);
+        unconfinedTime += omp_get_wtime() - tmpClock;
+        if(changedUnconfined) continue;
+
+        tmpClock = omp_get_wtime();
+        bool changedLP = LPReduction();
+        LPTime = omp_get_wtime() - tmpClock;
+        if(changedLP) continue;
         break;
     }
     std::cout << "Num iterations: " << numIterations << std::endl;
