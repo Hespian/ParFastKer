@@ -15,6 +15,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <functional>
+#include <string.h>
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
 
@@ -234,6 +235,21 @@ int parallel_reductions_fine_grained::degree(int const vertex) {
 bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove) {
     int candidateCount = 0;
     int toRemoveCount = 0;
+    int const maxTempSize = 1024;
+
+    int numThreads;
+    #pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+
+    vector<vector<int>> temp(numThreads);
+    vector<int> tempSize(numThreads, 0);
+
+    #pragma omp parallel for
+    for(int tid = 0; tid < numThreads; ++tid) {
+        temp[tid] = vector<int>(maxTempSize);
+    }
 
 
     #pragma omp parallel for
@@ -274,7 +290,12 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
                     if (neighborToAdd == -1) {
                         // There is a vertex in N(u) that doesn't have any neighbors outside of N[S]
                         // Input vertex is unconfined
-                        candidates[__sync_fetch_and_add(&candidateCount,1)] = vertex;
+                        temp[tid][__sync_fetch_and_add(&(tempSize[tid]), 1)] = vertex;
+                        if(tempSize[tid] == maxTempSize) {
+                            int startindex = __sync_fetch_and_add(&candidateCount, maxTempSize);
+                            memcpy(&(candidates[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
+                            tempSize[tid] = 0;
+                        }
                         isCandidate[vertex] = true;
                         goto nextVertexFirstRun;
                     } else if (neighborToAdd >= 0) {
@@ -297,6 +318,12 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
             }
         }
     nextVertexFirstRun:     ;
+    }
+    #pragma omp parallel for
+    for(int tid = 0; tid < numThreads; ++tid) {
+        int startindex = __sync_fetch_and_add(&candidateCount, tempSize[tid]);
+        memcpy(&(candidates[startindex]), &(temp[tid][0]), tempSize[tid] * sizeof(int));
+        tempSize[tid] = 0;
     }
     std::cout << "Done with run 1! Candidates: " << candidateCount << std::endl;
 
@@ -343,7 +370,12 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
                         if(isCandidate[u] && u < vertex) {
                             continue;
                         }
-                        toRemove[__sync_fetch_and_add(&toRemoveCount,1)] = vertex;
+                        temp[tid][__sync_fetch_and_add(&(tempSize[tid]), 1)] = vertex;
+                        if(tempSize[tid] == maxTempSize) {
+                            int startindex = __sync_fetch_and_add(&toRemoveCount, maxTempSize);
+                            memcpy(&(toRemove[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
+                            tempSize[tid] = 0;
+                        }
                         goto nextVertexSecond;
                     } else if (neighborToAdd >= 0) {
                         // there is a vertex in N(u) that has exactly one neighbor outside of N[S]
@@ -371,6 +403,12 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
             }
         }
     nextVertexSecond:     ;
+    }
+    #pragma omp parallel for
+    for(int tid = 0; tid < numThreads; ++tid) {
+        int startindex = __sync_fetch_and_add(&toRemoveCount, tempSize[tid]);
+        memcpy(&(toRemove[startindex]), &(temp[tid][0]), tempSize[tid] * sizeof(int));
+        tempSize[tid] = 0;
     }
     std::cout << "Done with run 2! ToRemove: " << toRemoveCount << std::endl;
 

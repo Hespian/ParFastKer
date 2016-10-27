@@ -163,14 +163,14 @@ int main(int argn, char **argv) {
     } endfor
     std::cout << "Finished creating graph" << std::endl;
 
-    omp_set_num_threads(1);
+    omp_set_num_threads(4);
     for(int i = 0; i < mis_config.num_reps; ++i) {
         std::cout << "---------------------------------------------------------------------" << std::endl;
         std::cout << "New repitition: " << i  << std::endl;
         std::unique_ptr<parallel_reductions_fine_grained> reducer = std::unique_ptr<parallel_reductions_fine_grained>(new parallel_reductions_fine_grained(adj_for_parallel_aglorithm));
         reducer->reduce_graph_parallel();
         std::cout << "Kernel size: " << reducer->size() << std::endl;
-        // testCorrectness(reducer, G);
+        testCorrectness(reducer, G);
     }
 
 
