@@ -234,89 +234,146 @@ int parallel_reductions_fine_grained::degree(int const vertex) {
 bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove) {
     int candidateCount = 0;
     int toRemoveCount = 0;
-    bool firstRun = true;
-    for(int i = 0; i < 2; i++) {
-        #pragma omp parallel for
-        for(int vertex = 0; vertex < neighbors.size(); ++vertex) if(inGraph.Contains(vertex)) {
-            {
-                int tid = omp_get_thread_num();
-                fast_set &closedNeighborhood = closedNeighborhoodPerThread[tid];
-                vector<int> &neighborhood = neighborhoodPerThread[tid];
-                vector<int> &numNeighborsInS = numNeighborsInSPerThread[tid];
-                vector<int> &neighborsInS = neighborsInSPerThread[tid];
 
-                closedNeighborhood.clear();
-                closedNeighborhood.add(vertex);
-                int sizeS = 1, sizeNeighborhood = 0;
-                for (int u : neighbors[vertex]) if(inGraph.Contains(u)) {
-                    closedNeighborhood.add(u);
-                    neighborhood[sizeNeighborhood++] = u;
-                    numNeighborsInS[u] = 1;
-                }
-                bool vertexAddedToS = true;
 
-                while (vertexAddedToS) {
-                    vertexAddedToS = false;
-                    for (int i = 0; i < sizeNeighborhood; i++) {
-                        int const u = neighborhood[i];
-                        if (numNeighborsInS[u] != 1)  {
-                            continue;
-                        } 
-                        int neighborToAdd = -1;
-                        for (int const w : neighbors[u]) if(inGraph.Contains(w) && !closedNeighborhood.get(w)) {
-                            if (neighborToAdd >= 0) {
-                                // There is more than 1 neighbor outside of N[S]
-                                neighborToAdd = -2;
-                                break;
-                            }
-                            neighborToAdd = w;
+    #pragma omp parallel for
+    for(int vertex = 0; vertex < neighbors.size(); ++vertex) if(inGraph.Contains(vertex)) {
+        {
+            int tid = omp_get_thread_num();
+            fast_set &closedNeighborhood = closedNeighborhoodPerThread[tid];
+            vector<int> &neighborhood = neighborhoodPerThread[tid];
+            vector<int> &numNeighborsInS = numNeighborsInSPerThread[tid];
+            vector<int> &neighborsInS = neighborsInSPerThread[tid];
+
+            closedNeighborhood.clear();
+            closedNeighborhood.add(vertex);
+            int sizeS = 1, sizeNeighborhood = 0;
+            for (int u : neighbors[vertex]) if(inGraph.Contains(u)) {
+                closedNeighborhood.add(u);
+                neighborhood[sizeNeighborhood++] = u;
+                numNeighborsInS[u] = 1;
+            }
+            bool vertexAddedToS = true;
+
+            while (vertexAddedToS) {
+                vertexAddedToS = false;
+                for (int i = 0; i < sizeNeighborhood; i++) {
+                    int const u = neighborhood[i];
+                    if (numNeighborsInS[u] != 1)  {
+                        continue;
+                    } 
+                    int neighborToAdd = -1;
+                    for (int const w : neighbors[u]) if(inGraph.Contains(w) && !closedNeighborhood.get(w)) {
+                        if (neighborToAdd >= 0) {
+                            // There is more than 1 neighbor outside of N[S]
+                            neighborToAdd = -2;
+                            break;
                         }
-                        if (neighborToAdd == -1) {
-                            // There is a vertex in N(u) that doesn't have any neighbors outside of N[S]
-                            // Input vertex is unconfined
-                            if(!firstRun && isCandidate[u] && u < vertex) {
-                                continue;
-                            }
-                            if(firstRun) {
-                                candidates[__sync_fetch_and_add(&candidateCount,1)] = vertex;
-                                isCandidate[vertex] = true;
+                        neighborToAdd = w;
+                    }
+                    if (neighborToAdd == -1) {
+                        // There is a vertex in N(u) that doesn't have any neighbors outside of N[S]
+                        // Input vertex is unconfined
+                        candidates[__sync_fetch_and_add(&candidateCount,1)] = vertex;
+                        isCandidate[vertex] = true;
+                        goto nextVertexFirstRun;
+                    } else if (neighborToAdd >= 0) {
+                        // there is a vertex in N(u) that has exactly one neighbor outside of N[S]
+                        // that vertex has to be added to S
+                        vertexAddedToS = true;
+                        closedNeighborhood.add(neighborToAdd);
+                        sizeS++;
+                        for (int w : neighbors[neighborToAdd]) if(inGraph.Contains(w)) {
+                            if (closedNeighborhood.add(w)) {
+                                neighborhood[sizeNeighborhood++] = w;
+                                numNeighborsInS[w] = 1;
                             } else {
-                                toRemove[__sync_fetch_and_add(&toRemoveCount,1)] = vertex;
+                                numNeighborsInS[w]++;
                             }
-                            goto nextVertex;
-                        } else if (neighborToAdd >= 0) {
-                            // there is a vertex in N(u) that has exactly one neighbor outside of N[S]
-                            // that vertex has to be added to S
-                            if(!firstRun && isCandidate[neighborToAdd] && neighborToAdd < vertex) {
-                                continue;
-                            }
-                            if(!firstRun && isCandidate[u] && u < vertex) {
-                                continue;
-                            }
-                            vertexAddedToS = true;
-                            closedNeighborhood.add(neighborToAdd);
-                            sizeS++;
-                            for (int w : neighbors[neighborToAdd]) if(inGraph.Contains(w)) {
-                                if (closedNeighborhood.add(w)) {
-                                    neighborhood[sizeNeighborhood++] = w;
-                                    numNeighborsInS[w] = 1;
-                                } else {
-                                    numNeighborsInS[w]++;
-                                }
-                            }
-                            
                         }
+                        
                     }
                 }
             }
-        nextVertex:     ;
         }
-        if(firstRun)
-            std::cout << "Done with run 1! Candidates: " << candidateCount << std::endl;
-        else
-            std::cout << "Done with run 2! ToRemove: " << toRemoveCount << std::endl;
-        firstRun = false;
+    nextVertexFirstRun:     ;
     }
+    std::cout << "Done with run 1! Candidates: " << candidateCount << std::endl;
+
+
+    #pragma omp parallel for
+    for(int i = 0; i < candidateCount; ++i) if(inGraph.Contains(candidates[i])) {
+        {
+            int vertex = candidates[i];
+            int tid = omp_get_thread_num();
+            fast_set &closedNeighborhood = closedNeighborhoodPerThread[tid];
+            vector<int> &neighborhood = neighborhoodPerThread[tid];
+            vector<int> &numNeighborsInS = numNeighborsInSPerThread[tid];
+            vector<int> &neighborsInS = neighborsInSPerThread[tid];
+
+            closedNeighborhood.clear();
+            closedNeighborhood.add(vertex);
+            int sizeS = 1, sizeNeighborhood = 0;
+            for (int u : neighbors[vertex]) if(inGraph.Contains(u)) {
+                closedNeighborhood.add(u);
+                neighborhood[sizeNeighborhood++] = u;
+                numNeighborsInS[u] = 1;
+            }
+            bool vertexAddedToS = true;
+
+            while (vertexAddedToS) {
+                vertexAddedToS = false;
+                for (int i = 0; i < sizeNeighborhood; i++) {
+                    int const u = neighborhood[i];
+                    if (numNeighborsInS[u] != 1)  {
+                        continue;
+                    } 
+                    int neighborToAdd = -1;
+                    for (int const w : neighbors[u]) if(inGraph.Contains(w) && !closedNeighborhood.get(w)) {
+                        if (neighborToAdd >= 0) {
+                            // There is more than 1 neighbor outside of N[S]
+                            neighborToAdd = -2;
+                            break;
+                        }
+                        neighborToAdd = w;
+                    }
+                    if (neighborToAdd == -1) {
+                        // There is a vertex in N(u) that doesn't have any neighbors outside of N[S]
+                        // Input vertex is unconfined
+                        if(isCandidate[u] && u < vertex) {
+                            continue;
+                        }
+                        toRemove[__sync_fetch_and_add(&toRemoveCount,1)] = vertex;
+                        goto nextVertexSecond;
+                    } else if (neighborToAdd >= 0) {
+                        // there is a vertex in N(u) that has exactly one neighbor outside of N[S]
+                        // that vertex has to be added to S
+                        if(isCandidate[neighborToAdd] && neighborToAdd < vertex) {
+                            continue;
+                        }
+                        if(isCandidate[u] && u < vertex) {
+                            continue;
+                        }
+                        vertexAddedToS = true;
+                        closedNeighborhood.add(neighborToAdd);
+                        sizeS++;
+                        for (int w : neighbors[neighborToAdd]) if(inGraph.Contains(w)) {
+                            if (closedNeighborhood.add(w)) {
+                                neighborhood[sizeNeighborhood++] = w;
+                                numNeighborsInS[w] = 1;
+                            } else {
+                                numNeighborsInS[w]++;
+                            }
+                        }
+                        
+                    }
+                }
+            }
+        }
+    nextVertexSecond:     ;
+    }
+    std::cout << "Done with run 2! ToRemove: " << toRemoveCount << std::endl;
+
     #pragma omp parallel for
     for(int i = 0; i < candidateCount; ++i) {
         int vertex = candidates[i];
