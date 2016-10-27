@@ -231,7 +231,7 @@ int parallel_reductions_fine_grained::degree(int const vertex) {
 //     return changed;
 // }
 
-void parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove) {
+bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove) {
     int candidateCount = 0;
     int toRemoveCount = 0;
     bool firstRun = true;
@@ -332,7 +332,8 @@ void parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
             vertexDegree[neighbor]--;
         }
         neighbors[vertex].Clear();
-    }        
+    }   
+    return toRemoveCount > 0;     
 }
 
 void parallel_reductions_fine_grained::reduce_graph_parallel() {
@@ -375,13 +376,13 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
     int numIterations = 0;
     while(true) {
         numIterations++;
-        int sizeBefore = inGraph.Size();
+        // int sizeBefore = inGraph.Size();
         tmpClock = omp_get_wtime();
-        RemoveUnconfined(fastSetPerThread, tempInt1PerThread, tempInt2PerThread, tempIntDoubleSizePerThread, isCandidate, candidates, toRemove);
+        bool changed = RemoveUnconfined(fastSetPerThread, tempInt1PerThread, tempInt2PerThread, tempIntDoubleSizePerThread, isCandidate, candidates, toRemove);
         unconfinedTime += omp_get_wtime() - tmpClock;
-        int sizeAfter = inGraph.Size();
-        numUnconfinedReductions += sizeBefore - sizeAfter;
-        if(sizeBefore != sizeAfter) continue;
+        // int sizeAfter = inGraph.Size();
+        // numUnconfinedReductions += sizeBefore - sizeAfter;
+        if(changed) continue;
         break;
     }
     std::cout << "Num iterations: " << numIterations << std::endl;
