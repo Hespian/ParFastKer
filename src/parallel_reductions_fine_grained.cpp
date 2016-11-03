@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <functional>
 #include <string.h>
+#include <memory>
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
 #define maxTempSize 8192
@@ -99,7 +100,7 @@ int parallel_reductions_fine_grained::degree(int const vertex) {
 }
 
 
-bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>> &vMarkedVerticesPerThread, vector<int> &toRemove, vector<vector<int>> &temp)
+bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>> &vMarkedVerticesPerThread, vector<int> &toRemove, vector<unique_ptr<vector<int>>> &temp)
 {
     int const N = neighbors.size();
     int toRemoveCount = 0;
@@ -150,11 +151,11 @@ bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>>
                 }
             }
             if (superSet) {
-                temp[tid].push_back(vertex);
-                if(temp[tid].size() == maxTempSize) {
+                (*(temp[tid])).push_back(vertex);
+                if((*(temp[tid])).size() == maxTempSize) {
                     int startindex = __sync_fetch_and_add(&toRemoveCount, maxTempSize);
-                    memcpy(&(toRemove[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
-                    temp[tid].clear();
+                    memcpy(&(toRemove[startindex]), &((*(temp[tid]))[0]), maxTempSize * sizeof(int));
+                    (*(temp[tid])).clear();
                 }
             }
         }
@@ -163,9 +164,9 @@ bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>>
 
     #pragma omp parallel for
     for(int tid = 0; tid < numThreads; ++tid) {
-        int startindex = __sync_fetch_and_add(&toRemoveCount, temp[tid].size());
-        memcpy(&(toRemove[startindex]), &(temp[tid][0]), temp[tid].size() * sizeof(int));
-        temp[tid].clear();
+        int startindex = __sync_fetch_and_add(&toRemoveCount, (*(temp[tid])).size());
+        memcpy(&(toRemove[startindex]), &((*(temp[tid]))[0]), (*(temp[tid])).size() * sizeof(int));
+        (*(temp[tid])).clear();
     }
     // std::cout << "Done with finding isolated cliques! ToRemove: " << toRemoveCount << std::endl;
 
@@ -241,7 +242,7 @@ bool parallel_reductions_fine_grained::LPReduction() {
 */  return changed;
 }
 
-bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove, vector<vector<int>> &temp) {
+bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closedNeighborhoodPerThread, vector<vector<int>> &neighborhoodPerThread, vector<vector<int>> &numNeighborsInSPerThread, vector<vector<int>> &neighborsInSPerThread, vector<char> &isCandidate, vector<int> &candidates, vector<int> &toRemove, vector<unique_ptr<vector<int>>> &temp) {
     int candidateCount = 0;
     int toRemoveCount = 0;
 
@@ -290,11 +291,11 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
                     if (neighborToAdd == -1) {
                         // There is a vertex in N(u) that doesn't have any neighbors outside of N[S]
                         // Input vertex is unconfined
-                        temp[tid].push_back(vertex);
-                        if(temp[tid].size() == maxTempSize) {
+                        (*(temp[tid])).push_back(vertex);
+                        if((*(temp[tid])).size() == maxTempSize) {
                             int startindex = __sync_fetch_and_add(&candidateCount, maxTempSize);
-                            memcpy(&(candidates[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
-                            temp[tid].clear();
+                            memcpy(&(candidates[startindex]), &((*(temp[tid]))[0]), maxTempSize * sizeof(int));
+                            (*(temp[tid])).clear();
                         }
                         isCandidate[vertex] = true;
                         goto nextVertexFirstRun;
@@ -321,9 +322,9 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
     }
     #pragma omp parallel for
     for(int tid = 0; tid < numThreads; ++tid) {
-        int startindex = __sync_fetch_and_add(&candidateCount, temp[tid].size());
-        memcpy(&(candidates[startindex]), &(temp[tid][0]), temp[tid].size() * sizeof(int));
-        temp[tid].clear();
+        int startindex = __sync_fetch_and_add(&candidateCount, (*(temp[tid])).size());
+        memcpy(&(candidates[startindex]), &((*(temp[tid]))[0]), (*(temp[tid])).size() * sizeof(int));
+        (*(temp[tid])).clear();
     }
     // std::cout << "Done with run 1! Candidates: " << candidateCount << std::endl;
 
@@ -370,11 +371,11 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
                         if(isCandidate[u] && u < vertex) {
                             continue;
                         }
-                        temp[tid].push_back(vertex);
-                        if(temp[tid].size() == maxTempSize) {
+                        (*(temp[tid])).push_back(vertex);
+                        if((*(temp[tid])).size() == maxTempSize) {
                             int startindex = __sync_fetch_and_add(&toRemoveCount, maxTempSize);
-                            memcpy(&(toRemove[startindex]), &(temp[tid][0]), maxTempSize * sizeof(int));
-                            temp[tid].clear();
+                            memcpy(&(toRemove[startindex]), &((*(temp[tid]))[0]), maxTempSize * sizeof(int));
+                            (*(temp[tid])).clear();
                         }
                         goto nextVertexSecond;
                     } else if (neighborToAdd >= 0) {
@@ -406,9 +407,9 @@ bool parallel_reductions_fine_grained::RemoveUnconfined(vector<fast_set> &closed
     }
     #pragma omp parallel for
     for(int tid = 0; tid < numThreads; ++tid) {
-        int startindex = __sync_fetch_and_add(&toRemoveCount, temp[tid].size());
-        memcpy(&(toRemove[startindex]), &(temp[tid][0]), temp[tid].size() * sizeof(int));
-        temp[tid].clear();
+        int startindex = __sync_fetch_and_add(&toRemoveCount, (*(temp[tid])).size());
+        memcpy(&(toRemove[startindex]), &((*(temp[tid]))[0]), (*(temp[tid])).size() * sizeof(int));
+        (*(temp[tid])).clear();
     }
     // std::cout << "Done with run 2! ToRemove: " << toRemoveCount << std::endl;
 
@@ -447,7 +448,7 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
     vector<int> candidates(m_AdjacencyArray.size());
     vector<int> toRemove(m_AdjacencyArray.size());
     vector<char> isCandidate = vector<char>(m_AdjacencyArray.size());
-    vector<vector<int>> tempBuffer(numThreads);
+    vector<unique_ptr<vector<int>>> tempBuffer(numThreads);
     vector<vector<bool>> markedVerticesPerThread(numThreads);
     for(int threadId = 0; threadId < numThreads; threadId++) {
         vector<int> tempInt1 = vector<int>(m_AdjacencyArray.size());
@@ -458,8 +459,8 @@ void parallel_reductions_fine_grained::reduce_graph_parallel() {
         fastSetPerThread[threadId] = fastSet;
         vector<int> tempIntDoubleSize = vector<int>(m_AdjacencyArray.size() * 2);
         tempIntDoubleSizePerThread[threadId] = tempIntDoubleSize;
-        tempBuffer[threadId] = vector<int>();
-        tempBuffer[threadId].reserve(maxTempSize);
+        tempBuffer[threadId] = unique_ptr<vector<int>>(new vector<int>());
+        tempBuffer[threadId]->reserve(maxTempSize);
         markedVerticesPerThread[threadId] = vector<bool>(m_AdjacencyArray.size(), false);
     }
 
