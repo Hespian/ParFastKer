@@ -5,3 +5,5 @@ debug/*
 scripts/graphics
 scripts/partition_script.sh
 scripts/benchmark_script.sh
+*.sublime-project
+*.sublime-workspace
