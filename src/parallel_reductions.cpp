@@ -18,8 +18,9 @@
 #include <functional>
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
+#define HighDegreeCutoff 10000
 
-#define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
+#define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition && neighbors[v].Size() < HighDegreeCutoff) remaining.Insert(v);
 // Remove vertex from inGraph first!
 #define REMOVE_NEIGHBOR(partition, neighbor, vertex) {assert(!inGraph.Contains(vertex)); assert(partitions[vertex] == partition); vertexDegree[neighbor]--; if(partition != partitions[neighbor]) {numCutEdges[neighbor]--; neighborhoodChanged.Insert(neighbor);}}
 #define REMOVE_VERTEX(partition, vertex) {inGraph.Remove(vertex); inGraphPerPartition[partition].Remove(vertex);}
@@ -145,7 +146,7 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 
     for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         assert(partitions[neighbor] == partition);
-        if (degree(neighbor) < deg) {
+        if (degree(neighbor) < deg || neighbors[neighbor].Size() > HighDegreeCutoff) {
             profilingAddTimeUnsuccessfulIsolatedCliqueDegree(&profilingHelper, partition);
             return false;
         }
@@ -228,7 +229,7 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
     int sizeS = 1, sizeNeighborhood = 0;
     for (int u : neighbors[vertex]) if(inGraph.Contains(u)) {
         closedNeighborhood.add(u);
-        if(partitions[u] == partition) {
+        if(partitions[u] == partition && neighbors[u].Size() < HighDegreeCutoff) {
             neighborhood[sizeNeighborhood++] = u;
             numNeighborsInS[u] = 1;
         }
@@ -267,18 +268,18 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
             } else if (neighborToAdd >= 0) {
                 // there is a vertex in N(u) that has exactly one neighbor outside of N[S]
                 // that vertex has to be added to S
-                if(partitions[neighborToAdd] == partition) {
+                if(partitions[neighborToAdd] == partition && neighbors[neighborToAdd].Size() < HighDegreeCutoff) {
                     vertexAddedToS = true;
                     closedNeighborhood.add(neighborToAdd);
                     sizeS++;
                     for (int w : neighbors[neighborToAdd]) if(inGraph.Contains(w)) {
                         if (closedNeighborhood.add(w)) {
-                            if(partitions[w] == partition) {
+                            if(partitions[w] == partition && neighbors[w].Size() < HighDegreeCutoff) {
                                 neighborhood[sizeNeighborhood++] = w;
                                 numNeighborsInS[w] = 1;
                             }
                         } else {
-                            if(partitions[w] == partition)
+                            if(partitions[w] == partition && neighbors[w].Size() < HighDegreeCutoff)
                                 numNeighborsInS[w]++;
                         }
                     }
@@ -356,6 +357,8 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
 
     for(int const neighbor: neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         assert(numNeighbors < 3);
+        if(neighbors[neighbor].Size() > HighDegreeCutoff)
+            return false;
         twinNeighbors[numNeighbors++] = neighbor;
     }
 
@@ -366,7 +369,6 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
         int const neighbor = twinNeighbors[i];
         assert(partitions[neighbor] == partition);
         assert(neighbor != vertex);
-
         vMarkedVertices[neighbor] = true;
         int const neighborDegree = degree(neighbor);
         if(neighborDegree < smallesDegreeNeighborDegree) {
@@ -375,6 +377,9 @@ bool parallel_reductions::removeTwin(int const partition, int const vertex, vect
         }
     }
     assert(smallestDegreeNeighbor != -1);
+
+    if(neighbors[smallestDegreeNeighbor].Size() > HighDegreeCutoff)
+        return false;
 
     int twin = -1;
     for(int possibleTwin: neighbors[smallestDegreeNeighbor]) if(inGraph.Contains(possibleTwin)) {
@@ -534,6 +539,8 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     int neighbor1 = -1;
     int neighbor2 = -1;
     for(int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
+        if(neighbors[neighbor].Size() > HighDegreeCutoff)
+            return false;
         if(neighbor1 == -1)
             neighbor1 = neighbor;
         else if (neighbor2 == -1) 
@@ -682,7 +689,7 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
         } else if (maximumMatching.reachableVertices[vertex] > 0 && maximumMatching.reachableVertices[vertex + N] == 0) {
             changed = true;
             // vertex is in the independent set
-            // Nothing to to for the neighbors because they get removed too (two vertices on the same edge can't be 0)
+            // Nothing to do for the neighbors because they get removed too (two vertices on the same edge can't be 0)
             independent_set[vertex] = 0;
             inGraph.Remove(vertex);
             neighbors[vertex].Clear();
@@ -965,6 +972,9 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         while (!remaining.Empty()) {
             int const vertex = *(remaining.begin());
             remaining.Remove(vertex);
+            neighborhoodChanged.Remove(vertex);
+            if(neighbors[vertex].Size() > HighDegreeCutoff)
+                continue;
             assert(inGraph.Contains(vertex));
             assert(partitions[vertex] == partition);
             assert(independent_set[vertex] == -1);
