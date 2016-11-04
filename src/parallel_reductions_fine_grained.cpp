@@ -177,8 +177,7 @@ bool parallel_reductions_fine_grained::RemoveIsolatedClique(vector<vector<bool>>
         assert(inGraph.Contains(vertex));
         independent_set[vertex] = 0;
         inGraph.Remove(vertex);
-        for (const int neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-            inGraph.Remove(neighbor);
+        for (const int neighbor : neighbors[vertex]) if(__sync_fetch_and_and(&(inGraph.elements[neighbor]), false)) {
             independent_set[neighbor] = 1;
             for (const int nNeighbor : neighbors[neighbor]) if(inGraph.Contains(nNeighbor)) {
                 vertexDegree[nNeighbor]--;

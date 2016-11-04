@@ -46,7 +46,6 @@ public:
         return count; 
     }
 
-private:
     std::vector<char> elements;
 };
 
