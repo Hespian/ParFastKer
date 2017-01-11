@@ -26,6 +26,12 @@ inline bool ends_with(std::string const & value, std::string const & ending)
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
+inline bool starts_with(std::string const & value, std::string const & start)
+{
+  if (start.size() > value.size()) return false;
+  return std::equal(start.begin(), start.end(), value.begin());
+}
+
 int main(int argn, char **argv) {
     mis_log::instance()->print_title();
     
@@ -64,6 +70,25 @@ int main(int argn, char **argv) {
     } endfor
     std::cout << "Finished creating graph" << std::endl;
 
+    auto outerDir=opendir(partitions_directory.c_str());
+    std::vector<std::string> weight_dirs;
+    struct dirent *dp1;
+    while((dp1 = readdir(outerDir)) != NULL) { 
+      if(starts_with(dp1->d_name, "weight")) {
+	weight_dirs.push_back(dp1->d_name);
+      }
+    }
+    (void)closedir(outerDir);
+
+    std::string partitions_dir_original = std::string(partitions_directory);
+    
+    for(std::string weight_dir : weight_dirs) {
+      if(!ends_with(weight_dir, "degree_ultrafast")) continue;
+      std::cout << "========================================================================" << std::endl;
+      std::cout << weight_dir << std::endl;
+      partitions_directory = partitions_dir_original + "/" + weight_dir;
+
+
     auto dir = opendir(partitions_directory.c_str());
     std::vector<std::string> partition_files;
     struct dirent *dp;
@@ -74,11 +99,13 @@ int main(int argn, char **argv) {
     (void)closedir(dir);
 
     for(std::string partition_file: partition_files) {
-        std::cout << "---------------------------------------------------------------------" << std::endl;
         int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
-        std::cout << "Number of blocks: " << numPartitions << std::endl;
+	if(numPartitions != 16 && numPartitions != 1)
+          continue;
+	std::cout << "---------------------------------------------------------------------" << std::endl;
+	std::cout << "Number of blocks: " << numPartitions << std::endl;
         omp_set_num_threads(numPartitions);
-        std::string partition_file_path = "";
+	std::string partition_file_path = "";
         partition_file_path += partitions_directory;
         partition_file_path += "/";
         partition_file_path += partition_file;
@@ -95,6 +122,7 @@ int main(int argn, char **argv) {
 
             full_reducer_parallel->reduce_graph();
         }
+    }
     }
 
 

@@ -140,8 +140,8 @@ bool parallel_reductions::RemoveIsolatedClique(int const partition, int const ve
 
     int const deg = degree(vertex);
 
-    if(deg > ISOLATED_CLIQUE_MAX_NEIGHBORS)
-        return false;
+    //if(deg > ISOLATED_CLIQUE_MAX_NEIGHBORS)
+    //    return false;
 
     for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         assert(partitions[neighbor] == partition);
@@ -286,7 +286,7 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
             }
         }
     }
-
+    return false;
     if (sizeS >= 2) {
         closedNeighborhood.clear();
         int N = neighbors.size();
@@ -876,6 +876,7 @@ bool parallel_reductions::checkDegrees() {
 }
 
 void parallel_reductions::reduce_graph_sequential() {
+  return;
     long numThreads;
     #pragma omp parallel
     {
@@ -971,10 +972,10 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
             if (!reduction && m_bAllowVertexFolds) {
                 reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
-            }
-            if (!reduction) {
+		}
+            /*if (!reduction) {
                 reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
-            }
+		}*/
             /*dependencyCheckingIterations++;
             if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
@@ -995,10 +996,10 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         }
         for(int vertex : verticesToRemove) {
             inGraphPerPartition[partition].Remove(vertex);
-        }
+	    }
         // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
-    }
+	}
     // std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();
     time += (endClock - startClock);

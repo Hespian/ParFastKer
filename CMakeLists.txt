@@ -29,6 +29,7 @@ include_directories(extern/KaHIP/interface)
 #For debugging
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 # add_definitions("-pg")
+# add_definitions("-g")
 
 #enable c++11
 add_definitions(-std=c++11)
