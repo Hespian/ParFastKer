@@ -710,6 +710,62 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
 }
 
 void parallel_reductions::reduce_graph_parallel() {
+
+  int numPartitions = partition_nodes.size();
+  vector<long> degreeCount(numPartitions, 0);
+
+  long numThreads;
+    #pragma omp parallel
+  {
+    numThreads = omp_get_num_threads();
+  }
+  std::cout << "num threads: " << numThreads << std::endl;
+  std::cout << "num partitions: " << numPartitions << std::endl;
+
+
+  /*auto neighbors_per_partition = std::vector<std::vector<SparseArraySet>>(numPartitions);                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                              
+  for(int partition = 0; partition < numPartitions; ++partition) {                                                                                                                                                                                                            
+    neighbors_per_partition[partition] = vector<SparseArraySet>(neighbors.size());                                                                                                                                                                                            
+    for(int vertex = 0; vertex < neighbors.size(); ++vertex) {                                                                                                                                                                                                                
+      neighbors_per_partition[partition][vertex] = SparseArraySet(neighbors[vertex].Size());                                                                                                                                                                                  
+      for(int const neighbor: neighbors[vertex]) {                                                                                                                                                                                                                            
+        neighbors_per_partition[partition][vertex].Insert(neighbor);                                                                                                                                                                                                          
+      }                                                                                                                                                                                                                                                                       
+    }                                                                                                                                                                                                                                                                         
+    }*/
+
+  double startClock = omp_get_wtime();
+    #pragma omp parallel for
+  for(int partition = 0; partition < numPartitions; ++partition) {
+    long degreeCountLocal = 0;
+    for(int i = 0; i < 50; ++i) {
+      for (int const vertex : partition_nodes[partition]) {
+        if(inGraph.Contains(vertex)) {
+          for(int const neighbor : neighbors[vertex]) {
+            if(inGraph.Contains(neighbor)) {
+                degreeCountLocal++;
+                }
+          }
+        }
+      }
+    }
+    std::cout << partition << ": " << degreeCountLocal << std::endl;
+  }
+  double endClock = omp_get_wtime();
+
+  std::cout << "Time: " << endClock - startClock << std::endl;
+  long sum = 0;
+  for(int partition = 0; partition < numPartitions; ++partition) {
+    std::cout << partition << ": " << degreeCount[partition] << std::endl;
+    sum += degreeCount[partition];
+  }
+  std::cout << "Degree sum: " << sum << std::endl;
+
+
+}
+
+/*void parallel_reductions::reduce_graph_parallel() {
     long numThreads;
     #pragma omp parallel
     {
@@ -780,7 +836,7 @@ void parallel_reductions::reduce_graph_parallel() {
     }
 
     tmpClock = omp_get_wtime();
-    LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+    // LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
     LPTime += omp_get_wtime() - tmpClock;
 
     bool changed = true;
@@ -797,7 +853,7 @@ void parallel_reductions::reduce_graph_parallel() {
         // std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
         // changed = false;
         tmpClock = omp_get_wtime();
-        changed = LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
+        changed = false; //LPReduction(remainingPerPartition, tempInt1PerPartition, numLPReductions);
         LPTime += omp_get_wtime() - tmpClock;
         // std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
         numIterations++;
@@ -852,7 +908,7 @@ void parallel_reductions::reduce_graph_parallel() {
     int sum_reductions = sum_isolated_clique + sum_vertex_fold + sum_twin_removed + sum_twin_folded + sum_unconfined + sum_diamond + numLPReductions;
     assert(sum_reductions == neighbors.size() - inGraph.Size());
     assert(checkDegrees());
-}
+}*/
 
 bool parallel_reductions::checkDegrees() {
     for(int vertex = 0; vertex < neighbors.size(); ++vertex) if(inGraph.Contains(vertex)) {
@@ -876,6 +932,7 @@ bool parallel_reductions::checkDegrees() {
 }
 
 void parallel_reductions::reduce_graph_sequential() {
+    return;
     long numThreads;
     #pragma omp parallel
     {
@@ -972,9 +1029,9 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             if (!reduction && m_bAllowVertexFolds) {
                 reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
             }
-            if (!reduction) {
-                reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
-            }
+            // if (!reduction) {
+            //     reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
+            // }
             /*dependencyCheckingIterations++;
             if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
@@ -982,7 +1039,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         }
         // std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
         // std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
-        std::vector<int> verticesToRemove;
+        /*std::vector<int> verticesToRemove;
         for (int const vertex : inGraphPerPartition[partition]) {
             assert(partitions[vertex] == partition);
             if(inGraph.Contains(vertex)) {
@@ -995,7 +1052,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         }
         for(int vertex : verticesToRemove) {
             inGraphPerPartition[partition].Remove(vertex);
-        }
+        }*/
         // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
     }

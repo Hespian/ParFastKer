@@ -15,6 +15,7 @@ for graphDirs in os.listdir(directory):
 		for resultsFile in os.listdir(graphDirPath):
 			resultsFilePath = os.path.join(graphDirPath, resultsFile)
 			if resultsFile.startswith("weight") and os.path.isfile(resultsFilePath):
+				print(resultsFilePath)
 				os.system("python3 draw_graphs.py " + resultsFilePath + " " + filename)
 
 file = open(filename, "a")

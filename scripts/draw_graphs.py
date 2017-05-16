@@ -22,6 +22,10 @@ def makedir(path):
     except OSError:
         if not os.path.isdir(path):
             raise
+def safe_div(x,y):
+    if y == 0:
+        return 0
+    return x / y
 
 inputFile = sys.argv[1]
 plotsDir = inputFile + "-plots"
@@ -54,7 +58,7 @@ numEdgesString = ""
 numVerticesString = ""
 for line in file:
 	words = line.split()
-	if "After call to sequential reduce_graph" in line:
+	if "Total time spent undoing" in line:
 		if current_rep == num_reps - 1:
 			for block_num in range(num_blocks):
 				time_per_block[num_blocks][block_num] /= num_reps
@@ -174,13 +178,13 @@ unconfined_relative = [0] * len(sizes)
 diamond_relative = [0] * len(sizes)
 lp_relative = [0] * len(sizes)
 for i in range(len(sizes)):
-	vertex_folds_relative[i] = (sum_vertex_folds[i] / sum_vertex_folds[0]) * 100
-	isolated_clique_relative[i] = (sum_isolated_clique[i] / sum_isolated_clique[0]) * 100
-	twins_removed_relative[i] = (sum_twins_removed[i] / sum_twins_removed[0]) * 100
-	twins_folded_relative[i] = (sum_twins_folded[i] / sum_twins_folded[0]) * 100
-	unconfined_relative[i] = (sum_unconfined[i] / sum_unconfined[0]) * 100
-	diamond_relative[i] = (sum_diamond[i] / sum_diamond[0]) * 100
-	lp_relative[i] = (num_lp_sorted[i] / num_lp_sorted[0]) * 100
+	vertex_folds_relative[i] = safe_div(sum_vertex_folds[i], sum_vertex_folds[0]) * 100
+	isolated_clique_relative[i] = safe_div(sum_isolated_clique[i], sum_isolated_clique[0]) * 100
+	twins_removed_relative[i] = safe_div(sum_twins_removed[i], sum_twins_removed[0]) * 100
+	twins_folded_relative[i] = safe_div(sum_twins_folded[i], sum_twins_folded[0]) * 100
+	unconfined_relative[i] = safe_div(sum_unconfined[i], sum_unconfined[0]) * 100
+	diamond_relative[i] = safe_div(sum_diamond[i], sum_diamond[0]) * 100
+	lp_relative[i] = safe_div(num_lp_sorted[i], num_lp_sorted[0]) * 100
 
 index = np.arange(len(sizes))
 width = 0.75
@@ -329,7 +333,7 @@ if not latexFileName == None:
 	latexFile.write("\\hline \n")
 	latexFile.write(str(sizes[0]) + " & " + str(round(parallel_times[0], 1)) + " & " + str(int(parallel_sizes[0])) + " & " + str(int(sum_vertex_folds[0])) + " & " + str(int(sum_isolated_clique[0])) + " & " + str(int(sum_twins_removed[0])) + " & " + str(int(sum_twins_folded[0])) + " & " + str(int(sum_unconfined[0])) + " & " + str(int(num_lp_sorted[0])) + " & " + str(int(sum_diamond[0])) + " & " + str(round(sequential_times[0], 1)) + "\\\\ \n")
 	for i in range(1, len(sizes)):
-		latexFile.write(str(sizes[i]) + "(\\%) & " + str(round((parallel_times[i] / parallel_times[0]) * 100, 1)) + " & " + str(int((parallel_sizes[i] / parallel_sizes[0]) * 100)) + " & " + str(int(vertex_folds_relative[i])) + " & " + str(int(isolated_clique_relative[i])) + " & " + str(int(twins_removed_relative[i])) + " & " + str(int(twins_folded_relative[i])) + " & " + str(int(unconfined_relative[i])) + " & " + str(int(lp_relative[i])) + " & " + str(int(diamond_relative[i])) + " & " + str(round((sequential_times[i] / sequential_times[0]) * 100, 1)) + "\\\\ \n")
+		latexFile.write(str(sizes[i]) + "(\\%) & " + str(round((parallel_times[i] / parallel_times[0]) * 100, 1)) + " & " + str(int((parallel_sizes[i] / parallel_sizes[0]) * 100)) + " & " + str(int(vertex_folds_relative[i])) + " & " + str(int(isolated_clique_relative[i])) + " & " + str(int(twins_removed_relative[i])) + " & " + str(int(twins_folded_relative[i])) + " & " + str(int(unconfined_relative[i])) + " & " + str(int(lp_relative[i])) + " & " + str(int(diamond_relative[i])) + " & " + str(round((sequential_times[i] / 1) * 100, 1)) + "\\\\ \n")
 
 	latexFile.write("\\end{tabular} \n")
 	latexFile.write("\\vspace{1cm} \n\\newline \n")
