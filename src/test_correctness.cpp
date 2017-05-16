@@ -62,7 +62,7 @@ int main(int argn, char **argv) {
     } endfor
 
     std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
-
+    omp_set_num_threads(2);
     full_reducer_parallel->reduce_graph();
 
     auto is_base = full_reducer_parallel->get_current_is_size_with_folds();

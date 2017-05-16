@@ -3,7 +3,8 @@ import os
 import subprocess
 
 graphDir = sys.argv[1]
-numPartitionSet = [1, 16]
+# numPartitionSet = [1, 2, 4, 8, 16, 32, 64]
+numPartitionSet = [64, 128, 256]
 preconfigurations = ["ultrafast"]
 
 def makedir(path):
@@ -91,10 +92,12 @@ def writeCustomWeightFile(graphFilePath, weightsFilePath, outputFilePath):
 
 def partitionGraph(graphPath, targetDir, preconfiguration):
     for numPartitions in numPartitionSet:
+        # if ("uk-2007-05" in graphPath) and (numPartitions == 64):
+        #     numPartitions = 32
         targetFile = os.path.join(targetDir, str(numPartitions) + ".partition")
         if not os.path.exists(targetFile):
             outputDumpFile = os.path.join(targetDir, "partition_output")
-            callString = "mpirun -n 16 ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress_reps " + graphPath + " --k=" + str(numPartitions) + " --seed 1337 --num_tries=5 --preconfiguration=" + preconfiguration + " &> " + outputDumpFile
+            callString = "mpirun -n " + "16" + " ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress_reps " + graphPath + " --k=" + str(numPartitions) + " --seed 1337 --num_tries=1 --preconfiguration=" + preconfiguration + " &> " + outputDumpFile
             print("echo '" + callString + "'")
             print(callString)
             outputFile = os.path.join(os.getcwd(), "tmppartition")
@@ -106,13 +109,53 @@ def partitionGraph(graphPath, targetDir, preconfiguration):
             print("echo '" + mvCallLogfile + "'")
             print(mvCallLogfile)
 
+def partitionGraphLPA(graphPath, targetDir):
+    for numPartitions in numPartitionSet:
+        targetFile = os.path.join(targetDir, str(numPartitions) + ".partition")
+        if not os.path.exists(targetFile):
+            outputDumpFile = os.path.join(targetDir, "partition_output")
+            callString = "../../KaHIPLPkway/deploy/label_propagation " + graphPath + " --k=" + str(numPartitions) +  " &> " + outputDumpFile
+            print("echo '" + callString + "'")
+            print(callString)
+            outputFile = os.path.join(os.getcwd(), "tmpclustering")
+            mvCall = "mv " + outputFile + " " + targetFile
+            print("echo '" + mvCall + "'")
+            print(mvCall)
+            logfiletarget = targetFile + "-log"
+            mvCallLogfile = "mv " + outputDumpFile + " " + logfiletarget
+            print("echo '" + mvCallLogfile + "'")
+            print(mvCallLogfile)
 
 customWeightsDir = os.path.join(graphDir, "custom_weights")
 customWeightFiles = []
 for file in os.listdir(customWeightsDir):
     if file.endswith(".weights"):
         customWeightFiles.append(file)
+'''
+for file in os.listdir(graphDir):
+    if file.endswith(".graph"):
+        graphPath = os.path.join(graphDir, file)
+        partitionsDir = os.path.join(graphDir, "partitions", file)
+        makedir(partitionsDir)
 
+
+        # Weight one                                                                                                                                                                                       
+        targetDirWeighOne = os.path.join(partitionsDir, "weight_one_LPA")
+        makedir(targetDirWeighOne)
+        partitionGraphLPA(graphPath, targetDirWeighOne)
+
+        # Weight degree                                                                                                                                                                                     
+        weightedGraphsDir = os.path.join(graphDir, "weighted")
+        makedir(weightedGraphsDir)
+        weightedGraphDegreeFilePath = os.path.join(weightedGraphsDir, file) + "-weighted-degree.graph"
+
+        writeDegreeFile(graphPath, weightedGraphDegreeFilePath)
+
+        targetDirWeighDegree = os.path.join(partitionsDir, "weight_degree_LPA")
+        makedir(targetDirWeighDegree)
+        partitionGraphLPA(weightedGraphDegreeFilePath, targetDirWeighDegree)
+
+'''
 for file in os.listdir(graphDir):
     if file.endswith(".graph"):
         graphPath = os.path.join(graphDir, file)
@@ -125,7 +168,7 @@ for file in os.listdir(graphDir):
             targetDirWeighOne = os.path.join(partitionsDir, "weight_one_" + preconfiguration)
             makedir(targetDirWeighOne)
             partitionGraph(graphPath, targetDirWeighOne, preconfiguration)
-
+        continue
         # Weight degree
         weightedGraphsDir = os.path.join(graphDir, "weighted")
         makedir(weightedGraphsDir)
