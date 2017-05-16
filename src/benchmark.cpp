@@ -19,11 +19,18 @@
 #include "full_reductions.h"
 #include <memory>
 #include "omp.h"
+#include <algorithm>
 
 inline bool ends_with(std::string const & value, std::string const & ending)
 {
     if (ending.size() > value.size()) return false;
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+inline bool starts_with(std::string const & value, std::string const & start)
+{
+  if (start.size() > value.size()) return false;
+  return std::equal(start.begin(), start.end(), value.begin());
 }
 
 int main(int argn, char **argv) {
@@ -64,6 +71,26 @@ int main(int argn, char **argv) {
     } endfor
     std::cout << "Finished creating graph" << std::endl;
 
+    auto outerDir=opendir(partitions_directory.c_str());
+    std::vector<std::string> weight_dirs;
+    struct dirent *dp1;
+    while((dp1 = readdir(outerDir)) != NULL) { 
+      if(starts_with(dp1->d_name, "weight")) {
+	weight_dirs.push_back(dp1->d_name);
+      }
+    }
+    (void)closedir(outerDir);
+
+    std::string partitions_dir_original = std::string(partitions_directory);
+    
+    for(std::string weight_dir : weight_dirs) {
+      if(!ends_with(weight_dir, "one_ultrafast")) continue;
+      //if(!ends_with(weight_dir, "LPA")) continue;
+      std::cout << "========================================================================" << std::endl;
+      std::cout << weight_dir << std::endl;
+      partitions_directory = partitions_dir_original + "/" + weight_dir;
+
+
     auto dir = opendir(partitions_directory.c_str());
     std::vector<std::string> partition_files;
     struct dirent *dp;
@@ -73,11 +100,24 @@ int main(int argn, char **argv) {
        }
     (void)closedir(dir);
 
+    int max_blocks = 0;
+    for(std::string partition_file:partition_files) {
+      int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
+      if(numPartitions > max_blocks) {
+	max_blocks = numPartitions;
+      }
+    }
+
     for(std::string partition_file: partition_files) {
-        std::cout << "---------------------------------------------------------------------" << std::endl;
         int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
+        if(numPartitions != 256 && numPartitions != 1 &&  numPartitions != 32)
+            continue;
+        //if(numPartitions != max_blocks)
+        //  continue;
+        std::cout << "---------------------------------------------------------------------" << std::endl;
         std::cout << "Number of blocks: " << numPartitions << std::endl;
-        omp_set_num_threads(numPartitions);
+        int max_threads = 32;
+        omp_set_num_threads(std::min(numPartitions, max_threads));
         std::string partition_file_path = "";
         partition_file_path += partitions_directory;
         partition_file_path += "/";
@@ -88,13 +128,36 @@ int main(int argn, char **argv) {
             partitions[node] = G.getPartitionIndex(node);
         } endfor
 
-        for(int i = 0; i < mis_config.num_reps; ++i) {
-            std::cout << "---------------------------------------------------------------------" << std::endl;
-            std::cout << "New repitition: " << i  << std::endl;
-            std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
+              for(int i = 0; i < mis_config.num_reps; ++i) {
+                  std::cout << "---------------------------------------------------------------------" << std::endl;
+                  std::cout << "New repitition: " << i  << std::endl;
+                  std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
 
-            full_reducer_parallel->reduce_graph();
-        }
+                  full_reducer_parallel->reduce_graph();
+
+                  //   if(i == mis_config.num_reps - 1) {
+                  //     int numKernelEdges = 0;
+                  //     std::vector<std::vector<int>> kernel = full_reducer_parallel->getKernel();
+                  //     for(std::vector<int> neighbors : kernel) {
+                  // numKernelEdges += neighbors.size();
+                  //     }
+                  //     std::string kernel_path = "kernels/" + mis_config.graph_filename + ".kernel";
+                  //     std::cout << "Writing results file to " << kernel_path << std::endl;
+                  //     std::ofstream f(kernel_path.c_str());
+                  //     f << kernel.size() <<  " " <<  numKernelEdges / 2 << std::endl;
+
+                  //     for(auto vertexNeighbors : kernel) {
+                  // std::sort(vertexNeighbors.begin(), vertexNeighbors.end());
+                  //             for(auto neighbor : vertexNeighbors) {
+                  //   f <<   neighbor + 1 << " " ;
+                  //             } 
+                  //     f <<  std::endl;
+                  //     }
+
+                  //   f.close();
+                  //   }
+              }
+    }
     }
 
 
