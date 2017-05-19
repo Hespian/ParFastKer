@@ -54,7 +54,7 @@ public:
 
     // Inserts are not allowed after saving state, as it is currently not supported.
     void Insert(int const x) {
-        assert(m_Elements.size() >= Size());
+        assert(m_Elements.size() > Size());
         if (Contains(x)) return;
         assert(!m_bRemoved); // not allowed to insert and remove when saving states
         if (!m_States.empty()) m_bInserted = true;

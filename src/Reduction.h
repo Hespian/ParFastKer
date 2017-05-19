@@ -22,10 +22,16 @@ public:
         m_iVertex = vertex;
     }
 
+    void SetKeptVertex(int const vertex) {
+        keptVertex = vertex;
+    }
+
     void SetTwin(int const twin)
     {
         m_iTwin = twin;
     }
+
+    int GetKeptVertex() const { return keptVertex; }
 
     int GetVertex() const { return m_iVertex; }
 
@@ -58,6 +64,7 @@ private:
     std::vector<int>                m_vNeighbors;
     std::vector<std::pair<int,int>> m_vRemovedEdges;
     ReductionType                   reductionType;
+    int keptVertex;
 };
 
 #endif // REDUCTION_H

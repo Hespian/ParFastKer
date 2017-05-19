@@ -519,15 +519,12 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 {
     assert(partitions[vertex] == partition);
 
-    profilingStartClock(&profilingHelper, partition, vertex);
 
     if(degree(vertex) != 2) {
-        profilingAddTimeUnsuccessfulFoldDegree(&profilingHelper, partition);
         return false;
     }
 
-    if (!isTwoNeighborhoodInSamePartition(vertex, partition, remaining)) { 
-        profilingAddTimeUnsuccessfulFoldWrongPartition(&profilingHelper, partition);
+    if(isBoundaryVertex(vertex)) {
         return false;
     }
 
@@ -543,14 +540,33 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         }
     }
     assert(neighbor2 != -1);
+    assert(neighbor1 != -1);
 
     int const vertex1(neighbor1);
     int const vertex2(neighbor2);
 
-    for(int const neighbor2 : neighbors[vertex1]) if(inGraph.Contains(neighbor2)) {
-        if(neighbor2 == vertex2) {
-            profilingAddTimeUnsuccessfulFoldAdjacent(&profilingHelper, partition);
-        return false; // neighbors must not be adjacent.
+    int const vertex1degree = degree(vertex1);
+    int const vertex2degree = degree(vertex2);
+    if(vertex1degree > 2 && vertex2degree > 2) {
+        // Only do vertex folds if one of the neighbors has degree < 3
+        return false;
+    }
+
+    int const smallDegreeNeighbor = vertex1degree > vertex2degree ? vertex2 : vertex1;
+    int const highDegreeNeighbor = vertex1degree > vertex2degree ? vertex1 : vertex2;
+
+    assert(smallDegreeNeighbor != highDegreeNeighbor);
+    assert(smallDegreeNeighbor < m_AdjacencyArray.size());
+    assert(highDegreeNeighbor < m_AdjacencyArray.size());
+
+
+    if(isBoundaryVertex(smallDegreeNeighbor)) {
+        return false;
+    }
+
+    for(int const neighbor2 : neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor2)) {
+        if(neighbor2 == highDegreeNeighbor) {
+            return false; // neighbors must not be adjacent.
         }
     }
 
@@ -563,62 +579,44 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     reduction.SetVertex(vertex);
     reduction.AddNeighbor(vertex1);
     reduction.AddNeighbor(vertex2);
+    reduction.SetKeptVertex(highDegreeNeighbor);
 
-    neighbors[vertex].Clear();
-    int const vertex1degree = degree(vertex1);
-    int const vertex2degree = degree(vertex2);
-    neighbors[vertex].Resize(vertex1degree + vertex2degree);
-    // neighbors[vertex1].Remove(vertex);
-    // neighbors[vertex2].Remove(vertex);
 
-    for (int const neighbor1 : neighbors[vertex1]) if(inGraph.Contains(neighbor1)) {
-        assert(partitions[neighbor1] == partition);
-        if (neighbor1 == vertex) continue;
-        // TODO: is it possible to not remove this?
-        neighbors[neighbor1].Remove(vertex1);
-        vertexDegree[neighbor1]--;
-        neighbors[vertex].Insert(neighbor1);
-        assert(partitions[vertex] == partitions[neighbor1]);
-        INSERT_REMAINING(partition, remaining, neighbor1);
-        // remaining.Insert(neighbor1);
+    int neighborsNeighbor = -1;
+    for(int const neighbor: neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor)) {
+        if(neighbor != vertex) {
+            neighborsNeighbor = neighbor;
+        }
     }
-    neighbors[vertex1].Clear();
-    assert(partitions[vertex] == partitions[vertex1]);
+    assert(neighborsNeighbor == -1 || neighborsNeighbor < m_AdjacencyArray.size());
+    assert(partitions[vertex] == partitions[highDegreeNeighbor]);
 
-    for (int const neighbor2 : neighbors[vertex2]) if(inGraph.Contains(neighbor2)) {
-        assert(partitions[neighbor2] == partition);
-        if (neighbor2 == vertex) continue;
-        // TODO: is it possible to not remove this?
-        neighbors[neighbor2].Remove(vertex2);
-        vertexDegree[neighbor2]--;
-        neighbors[vertex].Insert(neighbor2);
-        assert(partitions[vertex] == partitions[neighbor2]);
-        INSERT_REMAINING(partition, remaining, neighbor2);
-        // remaining.Insert(neighbor2);
+    INSERT_REMAINING(partition, remaining, highDegreeNeighbor);
+
+    neighbors[highDegreeNeighbor].Remove(vertex);
+    if(neighborsNeighbor != -1){
+        assert(partitions[highDegreeNeighbor] == partitions[neighborsNeighbor]);
+        int lowDegVertex = degree(highDegreeNeighbor) > degree(neighborsNeighbor) ? neighborsNeighbor : highDegreeNeighbor;
+        int highDegvertex = degree(highDegreeNeighbor) > degree(neighborsNeighbor) ? highDegreeNeighbor : neighborsNeighbor;
+        if(neighbors[lowDegVertex].Contains(highDegvertex)) {
+            vertexDegree[lowDegVertex]--;
+            vertexDegree[highDegvertex]--;
+        } else {
+            neighbors[highDegreeNeighbor].Insert(neighborsNeighbor);
+            neighbors[neighborsNeighbor].Remove(smallDegreeNeighbor);
+            neighbors[neighborsNeighbor].Insert(highDegreeNeighbor);
+        }
+        INSERT_REMAINING(partition, remaining, neighborsNeighbor);
+    } else {
+        vertexDegree[highDegreeNeighbor]--;
     }
-
-    neighbors[vertex2].Clear();
-    assert(partitions[vertex] == partitions[vertex2]);
-    
-    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-        if(!neighbors[neighbor].Contains(vertex))
-            vertexDegree[neighbor]++;
-        neighbors[neighbor].Insert(vertex);
-    }
-
-    vertexDegree[vertex] = neighbors[vertex].Size();
-
-    INSERT_REMAINING(partition, remaining, vertex);
-    // remaining.Insert(vertex);
-
     vReductions.emplace_back(std::move(reduction));
 
-    remaining.Remove(vertex1);
-    remaining.Remove(vertex2);
-    REMOVE_VERTEX(partition, vertex2);
-    REMOVE_VERTEX(partition, vertex1);
+    remaining.Remove(vertex);
+    remaining.Remove(smallDegreeNeighbor);
+    REMOVE_VERTEX(partition, vertex);
+    REMOVE_VERTEX(partition, smallDegreeNeighbor);
 
-    profilingAddTimeSuccessfulFold(&profilingHelper, partition);
     return true;
 }
 
@@ -1345,9 +1343,11 @@ void parallel_reductions::ApplyKernelSolutionToReductions(vector<Reduction> cons
                 }
             break;*/
             case FOLDED_VERTEX:
-                assert(independent_set[reduction.GetNeighbors()[0]] == -1);
-                assert(independent_set[reduction.GetNeighbors()[1]] == -1);
-                if(independent_set[reduction.GetVertex()] == 0) {
+                //TODO correct this
+                assert(independent_set[reduction.GetNeighbors()[0]] == -1 || reduction.GetNeighbors()[0] == reduction.GetKeptVertex());
+                assert(independent_set[reduction.GetNeighbors()[1]] == -1 || reduction.GetNeighbors()[1] == reduction.GetKeptVertex());
+                assert(independent_set[reduction.GetVertex()] == -1);
+                if(independent_set[reduction.GetKeptVertex()] == 0) {
                     independent_set[reduction.GetNeighbors()[0]] = 0;
                     independent_set[reduction.GetNeighbors()[1]] = 0;
                     independent_set[reduction.GetVertex()] = 1;
