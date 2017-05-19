@@ -552,21 +552,56 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         return false;
     }
 
-    int const smallDegreeNeighbor = vertex1degree > vertex2degree ? vertex2 : vertex1;
-    int const highDegreeNeighbor = vertex1degree > vertex2degree ? vertex1 : vertex2;
+    int smallDegreeNeighbor = vertex1degree > vertex2degree ? vertex2 : vertex1;
+    int highDegreeNeighbor = vertex1degree > vertex2degree ? vertex1 : vertex2;
 
     assert(smallDegreeNeighbor != highDegreeNeighbor);
     assert(smallDegreeNeighbor < m_AdjacencyArray.size());
     assert(highDegreeNeighbor < m_AdjacencyArray.size());
 
-
+    
     if(isBoundaryVertex(smallDegreeNeighbor)) {
-        return false;
+        if(vertex1degree == vertex2degree && !isBoundaryVertex(highDegreeNeighbor)) {
+            int temp = smallDegreeNeighbor;
+            smallDegreeNeighbor = highDegreeNeighbor;
+            highDegreeNeighbor = temp;
+        } else {
+            return false;
+        }
     }
 
     for(int const neighbor2 : neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor2)) {
         if(neighbor2 == highDegreeNeighbor) {
             return false; // neighbors must not be adjacent.
+        }
+    }
+
+    int neighborsNeighbor = -1;
+    for(int const neighbor: neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor)) {
+            if(neighbor != vertex) {
+                neighborsNeighbor = neighbor;
+            }
+    }
+    assert(neighborsNeighbor == -1 || neighborsNeighbor < m_AdjacencyArray.size());
+    assert(partitions[vertex] == partitions[highDegreeNeighbor]);
+
+    if(degree(highDegreeNeighbor) > 2 && neighborsNeighbor != -1) {
+        if(degree(neighborsNeighbor) <= 2) {
+            bool result = FoldVertex(partition, smallDegreeNeighbor, vReductions, remaining, foldedVertexCount);
+            assert(result);
+            return true;
+        } else if (degree(highDegreeNeighbor) == 2 && !isBoundaryVertex(highDegreeNeighbor)) {
+            int highdegreeNeighborsneighbor = -1;
+            for(int const neighbor: neighbors[highDegreeNeighbor]) if(inGraph.Contains(neighbor)) {
+                    if(neighbor != vertex) {
+                        highdegreeNeighborsneighbor = neighbor;
+                    }
+                }
+            if(degree(highdegreeNeighborsneighbor) <= 2 && !isBoundaryVertex(highDegreeNeighbor)) {
+                bool result = FoldVertex(partition, highDegreeNeighbor, vReductions, remaining, foldedVertexCount);
+                assert(result);
+                return true;
+            }
         }
     }
 
@@ -582,18 +617,9 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     reduction.SetKeptVertex(highDegreeNeighbor);
 
 
-    int neighborsNeighbor = -1;
-    for(int const neighbor: neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor)) {
-        if(neighbor != vertex) {
-            neighborsNeighbor = neighbor;
-        }
-    }
-    assert(neighborsNeighbor == -1 || neighborsNeighbor < m_AdjacencyArray.size());
-    assert(partitions[vertex] == partitions[highDegreeNeighbor]);
 
     INSERT_REMAINING(partition, remaining, highDegreeNeighbor);
 
-    neighbors[highDegreeNeighbor].Remove(vertex);
     if(neighborsNeighbor != -1){
         assert(partitions[highDegreeNeighbor] == partitions[neighborsNeighbor]);
         int lowDegVertex = degree(highDegreeNeighbor) > degree(neighborsNeighbor) ? neighborsNeighbor : highDegreeNeighbor;
@@ -602,6 +628,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
             vertexDegree[lowDegVertex]--;
             vertexDegree[highDegvertex]--;
         } else {
+            neighbors[highDegreeNeighbor].Remove(vertex);
             neighbors[highDegreeNeighbor].Insert(neighborsNeighbor);
             neighbors[neighborsNeighbor].Remove(smallDegreeNeighbor);
             neighbors[neighborsNeighbor].Insert(highDegreeNeighbor);
