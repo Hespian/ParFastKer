@@ -533,8 +533,10 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     for(int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         if(neighbor1 == -1)
             neighbor1 = neighbor;
-        else if (neighbor2 == -1) 
+        else if (neighbor2 == -1) { 
             neighbor2 = neighbor;
+            break;
+        }
         else {
             assert(false);
         }
