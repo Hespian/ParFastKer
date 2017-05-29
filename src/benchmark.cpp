@@ -110,14 +110,14 @@ int main(int argn, char **argv) {
 
     for(std::string partition_file: partition_files) {
         int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
-        if(numPartitions != 256 && numPartitions != 1 &&  numPartitions != 32)
+        int max_threads = 32;
+        omp_set_num_threads(std::min(numPartitions, max_threads));
+        if(numPartitions < max_threads || numPartitions > 256)
             continue;
         //if(numPartitions != max_blocks)
         //  continue;
         std::cout << "---------------------------------------------------------------------" << std::endl;
         std::cout << "Number of blocks: " << numPartitions << std::endl;
-        int max_threads = 32;
-        omp_set_num_threads(std::min(numPartitions, max_threads));
         std::string partition_file_path = "";
         partition_file_path += partitions_directory;
         partition_file_path += "/";

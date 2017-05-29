@@ -797,19 +797,14 @@ void parallel_reductions::reduce_graph_parallel() {
         }
       };
     }
-    #pragma omp parallel for
+#pragma omp parallel for
     for(int tid = 0; tid < numThreads; tid++) {
-      // std::cout << "Start allocating memory for block " << tid << std::endl;
-      std::vector<bool> vMarkedVertices = std::vector<bool>(m_AdjacencyArray.size(), false);
-        vMarkedVerticesPerTid[tid] = vMarkedVertices;
-        vector<int> tempInt1 = vector<int>(m_AdjacencyArray.size());
-        tempInt1PerTid[tid] = tempInt1;
-        vector<int> tempInt2 = vector<int>(m_AdjacencyArray.size());
-        tempInt2PerTid[tid] = tempInt2;
-        fast_set fastSet(m_AdjacencyArray.size());
-        fastSetPerTid[tid] = fastSet;
-        vector<int> tempIntDoubleSize = vector<int>(m_AdjacencyArray.size() * 2);
-        tempIntDoubleSizePerTid[tid] = tempIntDoubleSize;
+        // std::cout << "Start allocating memory for block " << tid << std::endl;
+        vMarkedVerticesPerTid[tid] = std::vector<bool>(m_AdjacencyArray.size(), false);
+        tempInt1PerTid[tid] = vector<int>(m_AdjacencyArray.size());
+        tempInt2PerTid[tid] = vector<int>(m_AdjacencyArray.size());
+        fastSetPerTid[tid] = fast_set(m_AdjacencyArray.size());
+        tempIntDoubleSizePerTid[tid] = vector<int>(m_AdjacencyArray.size() * 2);
     }
     std::cout << "Finished allocating memory" << std::endl;
 
