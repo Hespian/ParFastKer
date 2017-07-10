@@ -1,7 +1,30 @@
 #include <parallel/numeric>
 #include "MaximumMatching.h"
+#include <sys/resource.h>
 
+void increaseStackLimit(unsigned const size) {
+
+    const rlim_t kStackSize = size * 1024 * 1024;   // size = min stack size in MB
+    struct rlimit rl;
+    int result;
+
+    result = getrlimit(RLIMIT_STACK, &rl);
+    if (result == 0)
+        {
+            if (rl.rlim_cur < kStackSize)
+                {
+                    rl.rlim_cur = kStackSize;
+                    result = setrlimit(RLIMIT_STACK, &rl);
+                    if (result != 0)
+                        {
+                            fprintf(stderr, "setrlimit returned result = %d\n", result);
+                            exit(1);
+                        }
+                }
+        }
+}
 MaximumMatching::MaximumMatching(std::vector<std::vector<int>> const &adjacencyArray) {
+    increaseStackLimit(16);
 	G = (graph *) malloc(sizeof(graph));
 	G->weight = NULL;
 	long numVertices = adjacencyArray.size();
@@ -666,7 +689,6 @@ void MaximumMatching::findMate(long u, graph* G, long* flag,long* mate, long* de
 				long nextU = endVertex[k];
 				if( __sync_fetch_and_add(&degree[nextU],-1) == 2)
 				{
-					
 					findMate(nextU,G,flag,mate,degree);
 				}
 				
@@ -697,7 +719,6 @@ long MaximumMatching::KarpSipserInit1()
 	long *edgeStart = G->vtx_pointer;
 	long nrowsV = G->n;
 	long numUnmatchedU = 0;
-	
 	
 #pragma omp parallel for default(shared) schedule(static)
 	for(long i=0; i< nrowsV; i++)
@@ -752,6 +773,7 @@ long MaximumMatching::KarpSipserInit1()
 	}
    	
 	return numUnmatchedU;
+
 }
 
 // Multithreaded  Karp-Sipser maximal matching
