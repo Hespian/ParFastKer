@@ -63,7 +63,7 @@ def readGraphFile(inputFile):
     # plt.legend()
     plt.xlabel('Time [s]')
     plt.ylabel('Graph size')
-    plt.title(os.path.basename(inputFile))
+    plt.title(os.path.join(os.path.basename(os.path.split(inputFile)[0]), os.path.basename(inputFile)))
     outputfile = inputFile + '.pdf'
     # plt.show()
     # plt.savefig(outputfile, format='pdf')

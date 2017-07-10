@@ -61,6 +61,10 @@ protected: // methods
     int degree(int const vertex);
     bool isBoundaryVertex(const int vertex);
 
+    void updateDependencyCheckingEstimation(int partition);
+    void initDependencyCheckingEstimation(int partition);
+    bool shouldStopDependencyCheckingReductions(int partition);
+
     // Just for testing
     bool checkDegrees();
 
@@ -78,6 +82,8 @@ protected: // members
     MaximumMatching maximumMatching;
     std::vector<std::atomic_int> vertexDegree;
     std::vector<std::atomic_int> numCutEdges;
+    std::vector<double> dependecy_checking_burst_estimation;
+    std::vector<double> dependency_checking_times;
 #ifdef TIMERS
     clock_t replaceTimer;
     #endif // TIMERS

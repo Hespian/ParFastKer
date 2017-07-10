@@ -19,6 +19,8 @@
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
 #define MAX_SIZE_UNCONFINED 6
+#define DEPENDENCY_CHECKING_THRESHOLD_MULTIPLIER 3.0
+#define DEPENDENCYCHECKING_BURST_ESTIMATION_ALPHA 0.5
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
 // Remove vertex from inGraph first!
@@ -821,6 +823,8 @@ void parallel_reductions::reduce_graph_parallel() {
     vector<int> numTwinReductionsFolded(numPartitions, 0);
     vector<int> removedUnconfinedVerticesCount(numPartitions, 0);
     vector<int> numDiamondReductions(numPartitions, 0);
+    dependecy_checking_burst_estimation = std::vector<double>(numPartitions, -1.0);
+    dependency_checking_times = std::vector<double>(numPartitions, 0.0);
 
     int numLPReductions = 0;
     
@@ -1043,14 +1047,32 @@ void parallel_reductions::reduce_graph_sequential() {
     omp_set_num_threads(numThreads);
 }
 
+void parallel_reductions::initDependencyCheckingEstimation(int partition) {
+    dependency_checking_times[partition] = omp_get_wtime();
+}
+
+void parallel_reductions::updateDependencyCheckingEstimation(int partition) {
+    double current_time = omp_get_wtime();
+    double timeSinceLastReduction = current_time - dependency_checking_times[partition];
+    dependecy_checking_burst_estimation[partition] = dependecy_checking_burst_estimation[partition] <= 0.0 ? timeSinceLastReduction : DEPENDENCYCHECKING_BURST_ESTIMATION_ALPHA * timeSinceLastReduction + (1 - DEPENDENCYCHECKING_BURST_ESTIMATION_ALPHA) * dependecy_checking_burst_estimation[partition];
+    dependency_checking_times[partition] = current_time;
+}
+
+bool parallel_reductions::shouldStopDependencyCheckingReductions(int partition) {
+    return dependecy_checking_burst_estimation[partition] <= 0.0 ? false : ((omp_get_wtime() - dependency_checking_times[partition]) > dependecy_checking_burst_estimation[partition] * DEPENDENCY_CHECKING_THRESHOLD_MULTIPLIER);
+}
+
 void parallel_reductions::ApplyReductions(int const partition, vector<Reduction> &vReductions, std::vector<bool> &vMarkedVertices, ArraySet &remaining, vector<int> &tempInt1, vector<int> &tempInt2, fast_set &fastSet, vector<int> &tempIntDoubleSize, double &time, int &isolatedCliqueCount, int &foldedVertexCount, int &removedTwinCount, int &foldedTwinCount, int &removedUnconfinedVerticesCount, int &numDiamondReductions)
 {
     double startClock = omp_get_wtime();
     int dependencyCheckingIterations(0);
     int nonDependencyCheckingIterations(0);
     // std::cout << partition << ": Starting reductions..." << std::endl;
-    while (!remaining.Empty()) {
+    bool changed = true;
+    while (changed) {
+        changed = false;
       //std::cout << partition << ": Starting reductions with dependency checking..." << std::endl;
+        initDependencyCheckingEstimation(partition);
         while (!remaining.Empty()) {
             int const vertex = *(remaining.begin());
             remaining.Remove(vertex);
@@ -1074,6 +1096,15 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
 		}*/
+            if(reduction) {
+                // Update burst estimation
+                updateDependencyCheckingEstimation(partition);
+            } else {
+                // Check if last reduction was long ago and stop dependency checking reductions if threshold is exceeded
+                if(shouldStopDependencyCheckingReductions(partition)) {
+                    break;
+                }
+            }
         }
         // std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
         // std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
@@ -1083,6 +1114,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             if(inGraph.Contains(vertex)) {
                 bool reduction = removeUnconfined(partition, vertex, remaining, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
                 if(reduction) {
+                    changed = true;
                     verticesToRemove.push_back(vertex);
                 }
             }
