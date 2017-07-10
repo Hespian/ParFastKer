@@ -21,6 +21,8 @@
 #define MAX_SIZE_UNCONFINED 6
 #define DEPENDENCY_CHECKING_THRESHOLD_MULTIPLIER 3.0
 #define DEPENDENCYCHECKING_BURST_ESTIMATION_ALPHA 0.5
+#define GLOBAL_BURST_ESTIMATION_ALPHA 0.5
+#define GLOBAL_BURST_THRESHOLD_MULTIPLIER 6
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
 // Remove vertex from inGraph first!
@@ -772,6 +774,42 @@ bool parallel_reductions::LPReduction(vector<ArraySet> &remainingPerPartition, v
 
 }*/
 
+void parallel_reductions::initGlobalBurstEstimator() {
+    global_burst_timer = omp_get_wtime();
+    global_burst_estimation = -1.0;
+    lastFinishedThread = -1;
+    terminationFlag = false;;
+    firstFinished = -1;
+}
+double parallel_reductions::finishThreadAndGetEstimatedBurstLength(int tid) {
+    global_burst_timer_mutex.lock();
+    double current_time = omp_get_wtime();
+    bool firstFinisher = lastFinishedThread == -1;
+    lastFinishedThread = tid;
+    double lastBurstLength = current_time - global_burst_timer;
+    if (!firstFinisher) {
+        global_burst_estimation = global_burst_estimation <= 0.0 ? lastBurstLength : GLOBAL_BURST_ESTIMATION_ALPHA * lastBurstLength + (1 - GLOBAL_BURST_ESTIMATION_ALPHA) * global_burst_estimation;
+    } else {
+        firstFinished = tid;
+    }
+    global_burst_timer = current_time;
+    global_burst_timer_mutex.unlock();
+    if(firstFinisher) {
+        return 0.0;
+    } else {
+        return global_burst_estimation;
+    }
+}
+bool parallel_reductions::isLastFinishedThread(int tid) {
+    return lastFinishedThread == tid && tid != firstFinished;
+}
+bool parallel_reductions::shouldTerminate() {
+    return terminationFlag;
+}
+void parallel_reductions::terminateOtherThreads() {
+    terminationFlag = true;
+}
+
 void parallel_reductions::reduce_graph_parallel() {
     long numThreads;
     #pragma omp parallel
@@ -826,6 +864,11 @@ void parallel_reductions::reduce_graph_parallel() {
     dependecy_checking_burst_estimation = std::vector<double>(numPartitions, -1.0);
     dependency_checking_times = std::vector<double>(numPartitions, 0.0);
 
+    global_burst_timer = 0.0;
+    global_burst_estimation = -1.0;
+    lastFinishedThread = -1;
+    terminationFlag = false;
+
     int numLPReductions = 0;
     
     assert(checkDegrees());
@@ -857,7 +900,10 @@ void parallel_reductions::reduce_graph_parallel() {
 
     bool changed = true;
     int numIterations = 0;
+    double terminationTime = 0.0;
     while(changed) {
+        terminationTime = -1.0;
+        initGlobalBurstEstimator();
         std::cout << "Iteration " << numIterations << " starts at " << omp_get_wtime() - startClock << " current size: " << inGraph.Size() << std::endl;
         // int sizeBefore = inGraph.Size();
       //   std::cout << "-------------------------------------------------------------------------------------------" << std::endl;
@@ -874,8 +920,22 @@ void parallel_reductions::reduce_graph_parallel() {
             ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerTid[tid], remainingPerPartition[partition], tempInt1PerTid[tid], tempInt2PerTid[tid], fastSetPerTid[tid], tempIntDoubleSizePerTid[tid], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition], numDiamondReductions[partition]);
             partitionFinishTimes[partition] = omp_get_wtime() - startClock;
             partitionFinishSizes[partition] = inGraph.Size();
+            if(!shouldTerminate()) {
+                double sleeptime = finishThreadAndGetEstimatedBurstLength(tid) * GLOBAL_BURST_THRESHOLD_MULTIPLIER;
+                double startTime = omp_get_wtime();
+                std::cout << tid << " sleeping for " << sleeptime << std::endl;
+                while( (omp_get_wtime() - startTime) < sleeptime);
+                if(isLastFinishedThread(tid)) {
+                    std::cout << tid << " Terminating others" << std::endl;
+                    terminationTime = omp_get_wtime() - startClock;
+                    terminateOtherThreads();
+                }
+            }
         }
         restTime += omp_get_wtime() - tmpClock;
+        if(terminationTime > 0.0) {
+            std::cout << "Termination time: " << terminationTime << std::endl;
+        }
         for(int partition = 0; partition < numPartitions; partition++) {
             std::cout << "Partition " << partition << " finished iteration " << numIterations << " at " << partitionFinishTimes[partition] << " with (approximate) size " << partitionFinishSizes[partition] << std::endl;
         }
@@ -1074,6 +1134,9 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
       //std::cout << partition << ": Starting reductions with dependency checking..." << std::endl;
         initDependencyCheckingEstimation(partition);
         while (!remaining.Empty()) {
+            if(shouldTerminate()) {
+                break;
+            }
             int const vertex = *(remaining.begin());
             remaining.Remove(vertex);
             assert(inGraph.Contains(vertex));
@@ -1096,20 +1159,23 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
 		}*/
-            if(reduction) {
-                // Update burst estimation
-                updateDependencyCheckingEstimation(partition);
-            } else {
-                // Check if last reduction was long ago and stop dependency checking reductions if threshold is exceeded
-                if(shouldStopDependencyCheckingReductions(partition)) {
-                    break;
-                }
-            }
+            // if(reduction) {
+            //     // Update burst estimation
+            //     updateDependencyCheckingEstimation(partition);
+            // } else {
+            //     // Check if last reduction was long ago and stop dependency checking reductions if threshold is exceeded
+            //     if(shouldStopDependencyCheckingReductions(partition)) {
+            //         break;
+            //     }
+            // }
         }
         // std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
         // std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
         std::vector<int> verticesToRemove;
         for (int const vertex : inGraphPerPartition[partition]) {
+            if(shouldTerminate()) {
+                break;
+            }
             assert(partitions[vertex] == partition);
             if(inGraph.Contains(vertex)) {
                 bool reduction = removeUnconfined(partition, vertex, remaining, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
@@ -1126,6 +1192,9 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
 
+        if(shouldTerminate()) {
+            changed = false;
+        }
 	}
     // std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();

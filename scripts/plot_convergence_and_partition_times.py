@@ -32,6 +32,7 @@ def readGraphFile(inputFile):
     iterationStartSizes = []
     partitionFinishTimes = [[] for i in range(32)]
     partitionFinishSizes = [[] for i in range(32)]
+    terminationTimes = []
     for line in file:
         words = line.split()
         if "Filename:" in line:
@@ -48,11 +49,15 @@ def readGraphFile(inputFile):
             partitionNum = int(words[1])
             partitionFinishTimes[partitionNum].append(float(words[6]))
             partitionFinishSizes[partitionNum].append(int(words[-1]))
+        if "Termination time" in line:
+            terminationTimes.append(float(words[-1]))
     file.close()
     plt.yscale('log')
     plt.scatter(iterationStartTimes, iterationStartSizes, color="black", label="Start of iteration", marker="x")
     for time in iterationStartTimes:
         plt.axvline(x=time, color='black', linestyle='--', linewidth=0.5)
+    for time in terminationTimes:
+        plt.axvline(x=time, color='red', linestyle='--', linewidth=0.5)
 
     cmap = get_cmap(32)
     cmap = plt.get_cmap('hsv')

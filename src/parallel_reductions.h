@@ -16,6 +16,7 @@
 #include <ctime>
 #include <string>
 #include <atomic>
+#include <mutex>
 
 #define TIMERS
 
@@ -65,6 +66,12 @@ protected: // methods
     void initDependencyCheckingEstimation(int partition);
     bool shouldStopDependencyCheckingReductions(int partition);
 
+    void initGlobalBurstEstimator();
+    double finishThreadAndGetEstimatedBurstLength(int tid);
+    bool isLastFinishedThread(int tid);
+    bool shouldTerminate();
+    void terminateOtherThreads();
+
     // Just for testing
     bool checkDegrees();
 
@@ -84,6 +91,12 @@ protected: // members
     std::vector<std::atomic_int> numCutEdges;
     std::vector<double> dependecy_checking_burst_estimation;
     std::vector<double> dependency_checking_times;
+    double global_burst_timer;
+    double global_burst_estimation;
+    std::mutex global_burst_timer_mutex;
+    int lastFinishedThread;
+    bool terminationFlag;
+    int firstFinished;
 #ifdef TIMERS
     clock_t replaceTimer;
     #endif // TIMERS
