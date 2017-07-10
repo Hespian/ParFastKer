@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib2tikz import save as tikz_save
+import math
 
 inputDir = sys.argv[1]
 
@@ -33,6 +34,7 @@ def readGraphResults(graphResultFile):
     time_per_block = []
 
     results = dict()
+    max_num_blocks = 0
 
     for line in file:
         words = line.split()
@@ -51,8 +53,10 @@ def readGraphResults(graphResultFile):
                 partitioned_time /= num_reps
                 kernel_size /= num_reps
                 if partition_type.count('_') == 2:
-                    partitionTime = getPartitionTime(graphResultFile, partition_type)
-                    results[partition_type] = (time_per_block)
+                    # partitionTime = getPartitionTime(graphResultFile, partition_type)
+                    if max_num_blocks < num_blocks:
+                        max_num_blocks = num_blocks
+                        results[partition_type] = (time_per_block)
         if "Filename:" in line:
             graphName = words[-1]
         if "Number of repititions" in line:
@@ -72,25 +76,30 @@ def readGraphResults(graphResultFile):
     file.close()
     return results
 
+fig = plt.figure(figsize=(10,8))
+current_graph = 1
 def drawBoxplots(graphResults, graphname, inputdir):
     graphs = list(results.keys())
-    data =  [graphResults["weight_one_ultrafast"], graphResults["weight_degree_ultrafast"]]
-    labels =  ["uniform", "degree"]
+    data =  [graphResults["weight_one_ultrafast"]]
+    labels =  ["uniform"]
 
-    fig = plt.figure(figsize=(5,4))
-    ax = fig.add_subplot(111)
-    plt.boxplot(data, widths = 0.7, labels=labels, showmeans=True)
-    plt.xlabel('Weight')
-    plt.ylabel('Run time (s)')
-    plt.title('Run time per partition box plots')
+    global current_graph
+    dimensions = math.ceil(math.sqrt(numGraphs))
+    ax = fig.add_subplot(dimensions,dimensions,current_graph)
+    current_graph = current_graph + 1
+    plt.boxplot(data, widths = 0.7, showmeans=True)
+    # plt.xlabel('Weight')
+    # plt.ylabel('Run time (s)')
+    plt.title(graphname)
     # ax.set_xticklabels(labels=labels, rotation=45)
     # plt.savefig(os.path.join(plotsDir, "runtime_boxplots"))
     # plt.clf()
 
     filename = os.path.join(inputdir, 'boxplot' + graphname)
     # tikz_save(filename + '.tikz', figureheight = '\\figureheight', figurewidth = '\\figurewidth')
-    plt.show()
-    plt.clf()
+    # plt.show()
+    # plt.savefig(filename+ ".boxplot.pdf")
+    # plt.clf()
 
 results = dict()
 for filename in os.listdir(inputDir):
@@ -100,7 +109,11 @@ for filename in os.listdir(inputDir):
     else:
         continue
 
-drawBoxplots(results["it-2004-sorted.graph"], "it-2004-sorted.graph", inputDir)
-drawBoxplots(results["uk-2007-05.graph"], "uk-2007-05.graph", inputDir)
+numGraphs = len(results)
+for name, graph in sorted(results.items()):
+    drawBoxplots(graph, name, inputDir)
+
+# plt.show()
+plt.savefig(os.path.join(inputDir, "boxplots"))
 
 

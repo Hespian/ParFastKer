@@ -18,6 +18,7 @@
 #include <functional>
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
+#define MAX_SIZE_UNCONFINED 6
 
 #define INSERT_REMAINING(partition, remaining, v) if(partitions[v] == partition) remaining.Insert(v);
 // Remove vertex from inGraph first!
@@ -265,6 +266,9 @@ bool parallel_reductions::removeUnconfined(int const partition, int const vertex
                 ++removedUnconfinedVerticesCount;
                 return true;
             } else if (neighborToAdd >= 0) {
+                // if(sizeS >= MAX_SIZE_UNCONFINED) {
+                //     continue;
+                // }
                 // there is a vertex in N(u) that has exactly one neighbor outside of N[S]
                 // that vertex has to be added to S
                 if(partitions[neighborToAdd] == partition) {
@@ -809,6 +813,8 @@ void parallel_reductions::reduce_graph_parallel() {
     std::cout << "Finished allocating memory" << std::endl;
 
     vector<double> partitionTimes(numPartitions);
+    vector<double> partitionFinishTimes(numPartitions);
+    vector<int> partitionFinishSizes(numPartitions);
     vector<int> numIsolatedCliqueReductions(numPartitions, 0);
     vector<int> numVertexFoldReductions(numPartitions, 0);
     vector<int> numTwinReductionsRemoved(numPartitions, 0);
@@ -836,27 +842,39 @@ void parallel_reductions::reduce_graph_parallel() {
         }
     }
 
-    std::cout << "Start LP reduction" << std::endl;
-    tmpClock = omp_get_wtime();
 
-    LPReduction(remainingPerPartition, tempInt1PerTid, numLPReductions);
-    LPTime += omp_get_wtime() - tmpClock;
+    // std::cout << "Start LP reduction" << std::endl;
+    // tmpClock = omp_get_wtime();
 
-    std::cout << "done with LP reduction" << std::endl;
+    // LPReduction(remainingPerPartition, tempInt1PerTid, numLPReductions);
+    // LPTime += omp_get_wtime() - tmpClock;
+
+    // std::cout << "done with LP reduction" << std::endl;
 
     bool changed = true;
     int numIterations = 0;
     while(changed) {
+        std::cout << "Iteration " << numIterations << " starts at " << omp_get_wtime() - startClock << " current size: " << inGraph.Size() << std::endl;
         // int sizeBefore = inGraph.Size();
-      std::cout << "starting new iteration: " << numIterations << std::endl;
+      //   std::cout << "-------------------------------------------------------------------------------------------" << std::endl;
+      // std::cout << "starting new iteration: " << numIterations << std::endl;
+      // std::cout << "Current rest time: " << restTime << std::endl;
+      // auto partitionTimesCopy(partitionTimes);
+      // auto old_graphsize = inGraph.Size();
         tmpClock = omp_get_wtime();
 #pragma omp parallel for schedule(dynamic,1)
         for(int partition = 0; partition < numPartitions; partition++) {
           auto tid = omp_get_thread_num(); 
+          // std::cout << "partition " << partition << " on tid " << tid << std::endl;
           //std::cout << partition << ": starting new iteration" << std::endl;
             ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerTid[tid], remainingPerPartition[partition], tempInt1PerTid[tid], tempInt2PerTid[tid], fastSetPerTid[tid], tempIntDoubleSizePerTid[tid], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition], numDiamondReductions[partition]);
+            partitionFinishTimes[partition] = omp_get_wtime() - startClock;
+            partitionFinishSizes[partition] = inGraph.Size();
         }
         restTime += omp_get_wtime() - tmpClock;
+        for(int partition = 0; partition < numPartitions; partition++) {
+            std::cout << "Partition " << partition << " finished iteration " << numIterations << " at " << partitionFinishTimes[partition] << " with (approximate) size " << partitionFinishSizes[partition] << std::endl;
+        }
         // int sizeAfter = inGraph.Size();
         // std::cout << "Vertices removed by other reductions: " << sizeBefore - sizeAfter << std::endl;
         // changed = false;
@@ -866,6 +884,8 @@ void parallel_reductions::reduce_graph_parallel() {
         // changed = false;
         LPTime += omp_get_wtime() - tmpClock;
         // std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
+        std::cout << "Graph size after iteration " << numIterations << " at time " << omp_get_wtime() - startClock << ": " << inGraph.Size();
+        std::cout << " -- Current rest time: " << restTime << " -- Current LP time: " << LPTime << std::endl;
         numIterations++;
     }
     std::cout << "Num iterations: " << numIterations << std::endl;
@@ -1044,6 +1064,12 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             if (!reduction) {
                 reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
 		}
+            // if (!reduction) {
+            //     reduction = removeUnconfined(partition, vertex, remaining, fastSet, tempInt1, tempInt2, tempIntDoubleSize, removedUnconfinedVerticesCount, numDiamondReductions);
+            //     if(reduction) {
+            //         inGraphPerPartition[partition].Remove(vertex);
+            //     }
+            // }
             /*dependencyCheckingIterations++;
             if(dependencyCheckingIterations % 1000000 == 0) {
                 std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Currently queued vertices: " << remaining.Size() << ". Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
@@ -1067,6 +1093,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         }
         // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
+
 	}
     // std::cout << partition << ": Finished reductions!" << std::endl;
     double endClock = omp_get_wtime();

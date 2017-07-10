@@ -182,8 +182,8 @@ def readGraphFile(inputFile, color):
 	parallel_vertices_removed = [0] * len(sizes)
 	for i in range(len(sizes)):
 		parallel_times[i] = parallel_time[sizes[i]]
-		parallel_times_rel[i] = parallel_time[sizes[i]] / parallel_time[1]
-		parallel_sizes_rel[i] = parallel_size[sizes[i]] / parallel_size[1]
+		parallel_times_rel[i] = parallel_time[sizes[i]] / parallel_time[min(parallel_time)]
+		parallel_sizes_rel[i] = parallel_size[sizes[i]] / parallel_size[min(parallel_size)]
 		parallel_vertices_removed[i] = numVertices - parallel_size[sizes[i]]
 
 	parallel_vertices_removed_rel = [0] * len(sizes)
