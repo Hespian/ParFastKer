@@ -65,6 +65,7 @@ def readGraphFile(inputFile):
     for i in range(32):
         plt.scatter(partitionFinishTimes[i], partitionFinishSizes[i], color=colors[i], label="partition_" + str(i), marker="x")
     plt.xlim(xmin=0)
+    # plt.ylim(ymin=10**4)
     # plt.legend()
     plt.xlabel('Time [s]')
     plt.ylabel('Graph size')
@@ -108,5 +109,5 @@ for subdir in os.listdir(directory):
     currentdir += 1
 
 # plt.subplots_adjust(top=5)
-plt.show()
-# plt.savefig(outputfile, format='pdf', height = 100)
+# plt.show()
+plt.savefig(outputfile, format='pdf', height = 100)
