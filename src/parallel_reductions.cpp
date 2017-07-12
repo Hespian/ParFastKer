@@ -911,24 +911,67 @@ void parallel_reductions::reduce_graph_parallel() {
       // std::cout << "Current rest time: " << restTime << std::endl;
       // auto partitionTimesCopy(partitionTimes);
       // auto old_graphsize = inGraph.Size();
+        int graphSizeLastSample = 0;
+        for(int partition = 0; partition < numPartitions; ++partition) {
+            graphSizeLastSample += inGraphPerPartition[partition].Size();
+        }
+        double timeLastSample = omp_get_wtime();
+        double timeBefore = timeLastSample;
+        int graphSizeBefore = graphSizeLastSample;
+
         tmpClock = omp_get_wtime();
 #pragma omp parallel for schedule(dynamic,1)
         for(int partition = 0; partition < numPartitions; partition++) {
-          auto tid = omp_get_thread_num(); 
+          auto tid = omp_get_thread_num();
           // std::cout << "partition " << partition << " on tid " << tid << std::endl;
           //std::cout << partition << ": starting new iteration" << std::endl;
             ApplyReductions(partition, ReductionsPerPartition[partition], vMarkedVerticesPerTid[tid], remainingPerPartition[partition], tempInt1PerTid[tid], tempInt2PerTid[tid], fastSetPerTid[tid], tempIntDoubleSizePerTid[tid], partitionTimes[partition], numIsolatedCliqueReductions[partition], numVertexFoldReductions[partition], numTwinReductionsRemoved[partition], numTwinReductionsFolded[partition], removedUnconfinedVerticesCount[partition], numDiamondReductions[partition]);
             partitionFinishTimes[partition] = omp_get_wtime() - startClock;
             partitionFinishSizes[partition] = inGraph.Size();
-            if(!shouldTerminate()) {
-                double sleeptime = finishThreadAndGetEstimatedBurstLength(tid) * GLOBAL_BURST_THRESHOLD_MULTIPLIER;
-                double startTime = omp_get_wtime();
-                std::cout << tid << " sleeping for " << sleeptime << std::endl;
-                while( (omp_get_wtime() - startTime) < sleeptime);
-                if(isLastFinishedThread(tid)) {
-                    std::cout << tid << " Terminating others" << std::endl;
-                    terminationTime = omp_get_wtime() - startClock;
-                    terminateOtherThreads();
+            // if(!shouldTerminate()) {
+            //     double sleeptime = finishThreadAndGetEstimatedBurstLength(tid) * GLOBAL_BURST_THRESHOLD_MULTIPLIER;
+            //     double startTime = omp_get_wtime();
+            //     std::cout << tid << " sleeping for " << sleeptime << std::endl;
+            //     while( (omp_get_wtime() - startTime) < sleeptime);
+            //     if(isLastFinishedThread(tid)) {
+            //         std::cout << tid << " Terminating others" << std::endl;
+            //         terminationTime = omp_get_wtime() - startClock;
+            //         terminateOtherThreads();
+            //     }
+            // }
+
+            global_burst_timer_mutex.lock();
+            bool isFirstFinisher = firstFinished == -1;
+            firstFinished = 1;
+            global_burst_timer_mutex.unlock();
+            if(isFirstFinisher) {
+                int graphSizeCurrentSample = 0;
+                for(int partition = 0; partition < numPartitions; ++partition) {
+                    graphSizeCurrentSample += inGraphPerPartition[partition].Size();
+                }
+                double current_time = omp_get_wtime();
+                // double last_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
+                double last_delta = 0;
+                graphSizeLastSample = graphSizeCurrentSample;
+                timeLastSample = current_time;
+                while(true) {
+                    double startTime = omp_get_wtime();
+                    while( (omp_get_wtime() - startTime) < 0.2);
+                    graphSizeCurrentSample = 0;
+                    for(int partition = 0; partition < numPartitions; ++partition) {
+                        graphSizeCurrentSample += inGraphPerPartition[partition].Size();
+                    }
+                    current_time = omp_get_wtime();
+                    double current_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
+                    double global_delta = (graphSizeBefore - graphSizeCurrentSample) / (current_time - timeBefore);
+                    graphSizeLastSample = graphSizeCurrentSample;
+                    timeLastSample = current_time;
+                    if(current_delta <= 0.001 * global_delta) {
+                        terminationTime = omp_get_wtime() - startClock;
+                        terminateOtherThreads();
+                        break;
+                    }
+                    last_delta = current_delta;
                 }
             }
         }
