@@ -4,7 +4,8 @@ import subprocess
 
 graphDir = sys.argv[1]
 # numPartitionSet = [1, 2, 4, 8, 16, 32, 64]
-numPartitionSet = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+# numPartitionSet = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+numPartitionSet = [1, 32]
 preconfigurations = ["ultrafast"]
 
 def makedir(path):

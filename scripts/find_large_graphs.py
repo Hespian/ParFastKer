@@ -18,6 +18,7 @@ for filename in os.listdir(graphdir):
         continue
     nodes, edges = get_size(graph_file)
     if nodes >= 10000000:
-        results.append([ filename, '{0:,}'.format(nodes), '{0:,}'.format(edges) ])
+        # results.append([ filename, '{0:,}'.format(nodes), '{0:,}'.format(edges) ])
+        results.append([ filename, (nodes), (edges) ])
 
-print( tabulate(results, headers=["graph", "nodes", "edges"]) )
+print( tabulate(results, headers=["graph", "nodes", "edges"], tablefmt="latex") )
