@@ -940,40 +940,40 @@ void parallel_reductions::reduce_graph_parallel() {
             //     }
             // }
 
-            // global_burst_timer_mutex.lock();
-            // bool isFirstFinisher = firstFinished == -1;
-            // firstFinished = 1;
-            // global_burst_timer_mutex.unlock();
-            // if(isFirstFinisher) {
-            //     int graphSizeCurrentSample = 0;
-            //     for(int partition = 0; partition < numPartitions; ++partition) {
-            //         graphSizeCurrentSample += inGraphPerPartition[partition].Size();
-            //     }
-            //     double current_time = omp_get_wtime();
-            //     // double last_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
-            //     double last_delta = 0;
-            //     graphSizeLastSample = graphSizeCurrentSample;
-            //     timeLastSample = current_time;
-            //     while(true) {
-            //         double startTime = omp_get_wtime();
-            //         while( (omp_get_wtime() - startTime) < 0.2);
-            //         graphSizeCurrentSample = 0;
-            //         for(int partition = 0; partition < numPartitions; ++partition) {
-            //             graphSizeCurrentSample += inGraphPerPartition[partition].Size();
-            //         }
-            //         current_time = omp_get_wtime();
-            //         double current_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
-            //         double global_delta = (graphSizeBefore - graphSizeCurrentSample) / (current_time - timeBefore);
-            //         graphSizeLastSample = graphSizeCurrentSample;
-            //         timeLastSample = current_time;
-            //         if(current_delta <= 0.05 * global_delta) {
-            //             terminationTime = omp_get_wtime() - startClock;
-            //             terminateOtherThreads();
-            //             break;
-            //         }
-            //         last_delta = current_delta;
-            //     }
-            // }
+            global_burst_timer_mutex.lock();
+            bool isFirstFinisher = firstFinished == -1;
+            firstFinished = 1;
+            global_burst_timer_mutex.unlock();
+            if(isFirstFinisher) {
+                int graphSizeCurrentSample = 0;
+                for(int partition = 0; partition < numPartitions; ++partition) {
+                    graphSizeCurrentSample += inGraphPerPartition[partition].Size();
+                }
+                double current_time = omp_get_wtime();
+                // double last_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
+                double last_delta = 0;
+                graphSizeLastSample = graphSizeCurrentSample;
+                timeLastSample = current_time;
+                while(true) {
+                    double startTime = omp_get_wtime();
+                    while( (omp_get_wtime() - startTime) < 0.2);
+                    graphSizeCurrentSample = 0;
+                    for(int partition = 0; partition < numPartitions; ++partition) {
+                        graphSizeCurrentSample += inGraphPerPartition[partition].Size();
+                    }
+                    current_time = omp_get_wtime();
+                    double current_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
+                    double global_delta = (graphSizeBefore - graphSizeCurrentSample) / (current_time - timeBefore);
+                    graphSizeLastSample = graphSizeCurrentSample;
+                    timeLastSample = current_time;
+                    if(current_delta <= 0.05 * global_delta) {
+                        terminationTime = omp_get_wtime() - startClock;
+                        terminateOtherThreads();
+                        break;
+                    }
+                    last_delta = current_delta;
+                }
+            }
         }
         restTime += omp_get_wtime() - tmpClock;
         if(terminationTime > 0.0) {
