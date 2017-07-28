@@ -61,7 +61,7 @@ list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/te
 list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark_fine_grained.cpp")
 list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
 list(REMOVE_ITEM SEQUENTIALBENCHMARK_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark_reduction_wise.cpp")
-add_executable(sequential_benchmark ${SEQUENTIALBENCHMARK_SOURCES})
+# add_executable(sequential_benchmark ${SEQUENTIALBENCHMARK_SOURCES})
 
 # Add the sequential benchmark with reduction wise kernelization executable
 set(SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES ${SOURCES})
@@ -69,7 +69,7 @@ list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURC
 list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark_fine_grained.cpp")
 list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
 list(REMOVE_ITEM SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
-add_executable(sequential_benchmark_reduction_wise ${SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES})
+# add_executable(sequential_benchmark_reduction_wise ${SEQUENTIALBENCHMARKREDUCTIONWISE_SOURCES})
 
 # Add the sequential benchmark with reduction wise kernelization executable
 set(BENCHMARK_FINE_GRAINED_SOURCES ${SOURCES})
@@ -77,7 +77,7 @@ list(REMOVE_ITEM BENCHMARK_FINE_GRAINED_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src
 list(REMOVE_ITEM BENCHMARK_FINE_GRAINED_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark_reduction_wise.cpp")
 list(REMOVE_ITEM BENCHMARK_FINE_GRAINED_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp")
 list(REMOVE_ITEM BENCHMARK_FINE_GRAINED_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sequential_benchmark.cpp")
-add_executable(benchmark_fine_grained ${BENCHMARK_FINE_GRAINED_SOURCES})
+# add_executable(benchmark_fine_grained ${BENCHMARK_FINE_GRAINED_SOURCES})
 
 
 # Link libraries
@@ -85,9 +85,9 @@ target_link_libraries(test_correctness argtable2)
 target_link_libraries(test_correctness gomp)
 target_link_libraries(benchmark argtable2)
 target_link_libraries(benchmark gomp)
-target_link_libraries(benchmark_fine_grained argtable2)
-target_link_libraries(benchmark_fine_grained gomp)
-target_link_libraries(sequential_benchmark argtable2)
-target_link_libraries(sequential_benchmark gomp)
-target_link_libraries(sequential_benchmark_reduction_wise argtable2)
-target_link_libraries(sequential_benchmark_reduction_wise gomp)
+# target_link_libraries(benchmark_fine_grained argtable2)
+# target_link_libraries(benchmark_fine_grained gomp)
+# target_link_libraries(sequential_benchmark argtable2)
+# target_link_libraries(sequential_benchmark gomp)
+# target_link_libraries(sequential_benchmark_reduction_wise argtable2)
+# target_link_libraries(sequential_benchmark_reduction_wise gomp)

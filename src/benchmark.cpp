@@ -112,7 +112,10 @@ int main(int argn, char **argv) {
         int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
         int max_threads = 32;
         omp_set_num_threads(std::min(numPartitions, max_threads));
-        if(numPartitions > 256)
+        if(numPartitions == 1) {
+            omp_set_num_threads(2);
+        }
+        if(numPartitions > 32)
             continue;
         if(numPartitions != 32) {
             continue;

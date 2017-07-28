@@ -54,6 +54,9 @@ parallel_reductions::parallel_reductions(vector<vector<int>> const &adjacencyArr
         neighbors[u].InitializeFromAdjacencyArray(m_AdjacencyArray, u);
     }
     int numPartitions = *max_element(partitions.begin(), partitions.end()) + 1;
+    if(numPartitions == 1) {
+        numPartitions = 2;
+    }
     partition_nodes = std::vector<std::vector<int>>(numPartitions);
     for(int node = 0; node < N; ++node) {
         assert(partitions[node] >= 0);
@@ -534,8 +537,7 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
         return false;
     }
 
-    if (!isTwoNeighborhoodInSamePartition(vertex, partition, remaining)) { 
-        profilingAddTimeUnsuccessfulFoldWrongPartition(&profilingHelper, partition);
+    if(isBoundaryVertex(vertex)) {
         return false;
     }
 
@@ -544,8 +546,10 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
     for(int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
         if(neighbor1 == -1)
             neighbor1 = neighbor;
-        else if (neighbor2 == -1) 
+        else if (neighbor2 == -1) {
             neighbor2 = neighbor;
+            break;
+        }
         else {
             assert(false);
         }
@@ -554,79 +558,81 @@ bool parallel_reductions::FoldVertex(int const partition, int const vertex, vect
 
     int const vertex1(neighbor1);
     int const vertex2(neighbor2);
+    int const vertex1degree = degree(vertex1);
+    int const vertex2degree = degree(vertex2);
+    int smallDegreeNeighbor = vertex1degree > vertex2degree ? vertex2 : vertex1;
+    int highDegreeNeighbor = vertex1degree > vertex2degree ? vertex1 : vertex2;
 
-    for(int const neighbor2 : neighbors[vertex1]) if(inGraph.Contains(neighbor2)) {
-        if(neighbor2 == vertex2) {
-            profilingAddTimeUnsuccessfulFoldAdjacent(&profilingHelper, partition);
-        return false; // neighbors must not be adjacent.
-        }
+    assert(smallDegreeNeighbor != highDegreeNeighbor);
+    assert(smallDegreeNeighbor < m_AdjacencyArray.size());
+    assert(highDegreeNeighbor < m_AdjacencyArray.size());
+    assert(degree(highDegreeNeighbor) + degree(smallDegreeNeighbor) == vertex1degree + vertex2degree);
+
+    if(isBoundaryVertex(smallDegreeNeighbor)) {
+        return false;
+    }
+
+    for(int const neighbor2 : neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor2)) {
+            if(neighbor2 == highDegreeNeighbor) {
+                return false; // neighbors must not be adjacent.
+            }
     }
 
     foldedVertexCount += 2;
 
-    assert(partitions[vertex1] == partition);
-    assert(partitions[vertex2] == partition);
+    assert(partitions[highDegreeNeighbor] == partition);
+    assert(partitions[smallDegreeNeighbor] == partition);
 
     Reduction reduction(FOLDED_VERTEX);
     reduction.SetVertex(vertex);
-    reduction.AddNeighbor(vertex1);
-    reduction.AddNeighbor(vertex2);
+    reduction.AddNeighbor(highDegreeNeighbor);
+    reduction.AddNeighbor(smallDegreeNeighbor);
+    reduction.SetKeptVertex(highDegreeNeighbor);
 
-    neighbors[vertex].Clear();
-    int const vertex1degree = degree(vertex1);
-    int const vertex2degree = degree(vertex2);
-    neighbors[vertex].Resize(vertex1degree + vertex2degree);
+    // if(degree(highDegreeNeighbor) > 10000) {
+    //     std::cout << "Vertex degree " << degree(vertex) << std::endl;
+    //     std::cout << "Neighbor1 degree: " << degree(highDegreeNeighbor) << std::endl;
+    //     std::cout << "Neighbor2 degree: " << degree(smallDegreeNeighbor) << std::endl;
+    // }
+
+    // neighbors[vertex].Clear();
+    neighbors[highDegreeNeighbor].Resize(neighbors[highDegreeNeighbor].Size() + degree(smallDegreeNeighbor));
     // neighbors[vertex1].Remove(vertex);
     // neighbors[vertex2].Remove(vertex);
 
-    for (int const neighbor1 : neighbors[vertex1]) if(inGraph.Contains(neighbor1)) {
-        assert(partitions[neighbor1] == partition);
-        if (neighbor1 == vertex) continue;
-        // TODO: is it possible to not remove this?
-        neighbors[neighbor1].Remove(vertex1);
-        vertexDegree[neighbor1]--;
-        neighbors[vertex].Insert(neighbor1);
-        assert(partitions[vertex] == partitions[neighbor1]);
-        INSERT_REMAINING(partition, remaining, neighbor1);
-        // remaining.Insert(neighbor1);
-    }
-    neighbors[vertex1].Clear();
-    assert(partitions[vertex] == partitions[vertex1]);
-
-    for (int const neighbor2 : neighbors[vertex2]) if(inGraph.Contains(neighbor2)) {
+    for (int const neighbor2 : neighbors[smallDegreeNeighbor]) if(inGraph.Contains(neighbor2)) {
         assert(partitions[neighbor2] == partition);
         if (neighbor2 == vertex) continue;
-        // TODO: is it possible to not remove this?
-        neighbors[neighbor2].Remove(vertex2);
+        assert(neighbor2 != highDegreeNeighbor);
         vertexDegree[neighbor2]--;
-        neighbors[vertex].Insert(neighbor2);
-        assert(partitions[vertex] == partitions[neighbor2]);
+        assert(partitions[highDegreeNeighbor] == partitions[neighbor2]);
+        if(!neighbors[neighbor2].Contains(highDegreeNeighbor)) {
+            assert(!neighbors[highDegreeNeighbor].Contains(vertex2));
+            neighbors[highDegreeNeighbor].Insert(neighbor2);
+            vertexDegree[neighbor2]++;
+            vertexDegree[highDegreeNeighbor]++;
+            assert(neighbors[neighbor2].Contains( smallDegreeNeighbor ));
+            neighbors[neighbor2].Remove(smallDegreeNeighbor);
+            neighbors[neighbor2].Insert(highDegreeNeighbor);
+        }
         INSERT_REMAINING(partition, remaining, neighbor2);
         // remaining.Insert(neighbor2);
     }
 
-    neighbors[vertex2].Clear();
-    assert(partitions[vertex] == partitions[vertex2]);
-    
-    for (int const neighbor : neighbors[vertex]) if(inGraph.Contains(neighbor)) {
-        if(!neighbors[neighbor].Contains(vertex))
-            vertexDegree[neighbor]++;
-        neighbors[neighbor].Insert(vertex);
-    }
 
-    vertexDegree[vertex] = neighbors[vertex].Size();
-
-    INSERT_REMAINING(partition, remaining, vertex);
+    INSERT_REMAINING(partition, remaining, highDegreeNeighbor);
     // remaining.Insert(vertex);
 
     vReductions.emplace_back(std::move(reduction));
 
-    remaining.Remove(vertex1);
-    remaining.Remove(vertex2);
-    REMOVE_VERTEX(partition, vertex2);
-    REMOVE_VERTEX(partition, vertex1);
+    remaining.Remove(smallDegreeNeighbor);
+    remaining.Remove(vertex);
+    vertexDegree[highDegreeNeighbor]--;
+    REMOVE_VERTEX(partition, smallDegreeNeighbor);
+    REMOVE_VERTEX(partition, vertex);
 
     profilingAddTimeSuccessfulFold(&profilingHelper, partition);
+    // std::cout << "Degree after fold: " << degree(highDegreeNeighbor) << std::endl;
     return true;
 }
 
@@ -906,19 +912,21 @@ void parallel_reductions::reduce_graph_parallel() {
         initGlobalBurstEstimator();
         std::cout << "Iteration " << numIterations << " starts at " << omp_get_wtime() - startClock << " current size: " << inGraph.Size() << std::endl;
         // int sizeBefore = inGraph.Size();
-      //   std::cout << "-------------------------------------------------------------------------------------------" << std::endl;
-      // std::cout << "starting new iteration: " << numIterations << std::endl;
-      // std::cout << "Current rest time: " << restTime << std::endl;
-      // auto partitionTimesCopy(partitionTimes);
-      // auto old_graphsize = inGraph.Size();
+        std::cout << "-------------------------------------------------------------------------------------------" << std::endl;
+      std::cout << "starting new iteration: " << numIterations << std::endl;
+      std::cout << "Current rest time: " << restTime << std::endl;
+      auto partitionTimesCopy(partitionTimes);
+      auto old_graphsize = inGraph.Size();
         int graphSizeLastSample = 0;
-        for(int partition = 0; partition < numPartitions; ++partition) {
-            graphSizeLastSample += inGraphPerPartition[partition].Size();
-        }
+        // for(int partition = 0; partition < numPartitions; ++partition) {
+        //     graphSizeLastSample += inGraphPerPartition[partition].Size();
+        // }
+        graphSizeLastSample = inGraph.Size();
         double timeLastSample = omp_get_wtime();
         double timeBefore = timeLastSample;
         int graphSizeBefore = graphSizeLastSample;
 
+        atomic_int finishedThreads(0);
         tmpClock = omp_get_wtime();
 #pragma omp parallel for schedule(dynamic,1)
         for(int partition = 0; partition < numPartitions; partition++) {
@@ -939,34 +947,39 @@ void parallel_reductions::reduce_graph_parallel() {
             //         terminateOtherThreads();
             //     }
             // }
-
+            finishedThreads++;
             global_burst_timer_mutex.lock();
             bool isFirstFinisher = firstFinished == -1;
             firstFinished = 1;
             global_burst_timer_mutex.unlock();
             if(isFirstFinisher) {
                 int graphSizeCurrentSample = 0;
-                for(int partition = 0; partition < numPartitions; ++partition) {
-                    graphSizeCurrentSample += inGraphPerPartition[partition].Size();
-                }
+                // for(int partition = 0; partition < numPartitions; ++partition) {
+                //     graphSizeCurrentSample += inGraphPerPartition[partition].Size();
+                // }
                 double current_time = omp_get_wtime();
                 // double last_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
                 double last_delta = 0;
-                graphSizeLastSample = graphSizeCurrentSample;
-                timeLastSample = current_time;
+                graphSizeLastSample = graphSizeBefore;
+                timeLastSample = timeBefore;
                 while(true) {
                     double startTime = omp_get_wtime();
-                    while( (omp_get_wtime() - startTime) < 0.2);
+                    while( (omp_get_wtime() - startTime) < 1 && finishedThreads < numPartitions);
+                    if(finishedThreads == numPartitions)
+                        break;
                     graphSizeCurrentSample = 0;
-                    for(int partition = 0; partition < numPartitions; ++partition) {
-                        graphSizeCurrentSample += inGraphPerPartition[partition].Size();
-                    }
+                    // for(int partition = 0; partition < numPartitions; ++partition) {
+                    //     graphSizeCurrentSample += inGraphPerPartition[partition].Size();
+                    // }
+                    graphSizeCurrentSample = inGraph.Size();
                     current_time = omp_get_wtime();
                     double current_delta = (graphSizeLastSample - graphSizeCurrentSample) / (current_time - timeLastSample);
                     double global_delta = (graphSizeBefore - graphSizeCurrentSample) / (current_time - timeBefore);
+                    // std::cout << "Current: " << current_delta << " global: " << global_delta << " time: " << current_time - timeBefore << " size: " << graphSizeCurrentSample << std::endl;
                     graphSizeLastSample = graphSizeCurrentSample;
                     timeLastSample = current_time;
                     if(current_delta <= 0.05 * global_delta) {
+                        // std::cout << "Terminating" << std::endl;
                         terminationTime = omp_get_wtime() - startClock;
                         terminateOtherThreads();
                         break;
@@ -974,6 +987,7 @@ void parallel_reductions::reduce_graph_parallel() {
                     last_delta = current_delta;
                 }
             }
+            // std::cout << tid << ": finished" << std::endl;
         }
         restTime += omp_get_wtime() - tmpClock;
         if(terminationTime > 0.0) {
@@ -991,8 +1005,8 @@ void parallel_reductions::reduce_graph_parallel() {
         // changed = false;
         LPTime += omp_get_wtime() - tmpClock;
         // std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
-        std::cout << "Graph size after iteration " << numIterations << " at time " << omp_get_wtime() - startClock << ": " << inGraph.Size();
-        std::cout << " -- Current rest time: " << restTime << " -- Current LP time: " << LPTime << std::endl;
+        // std::cout << "Graph size after iteration " << numIterations << " at time " << omp_get_wtime() - startClock << ": " << inGraph.Size();
+        // std::cout << " -- Current rest time: " << restTime << " -- Current LP time: " << LPTime << std::endl;
         numIterations++;
     }
     std::cout << "Num iterations: " << numIterations << std::endl;
@@ -1185,11 +1199,14 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
             assert(inGraph.Contains(vertex));
             assert(partitions[vertex] == partition);
             assert(independent_set[vertex] == -1);
+            // std::cout << "Start isolated clique" << std::endl;
             bool reduction = RemoveIsolatedClique(partition, vertex, vReductions, remaining, vMarkedVertices, isolatedCliqueCount);
             if (!reduction && m_bAllowVertexFolds) {
+                // std::cout << "Start deg 2 fold" << std::endl;
                 reduction = FoldVertex(partition, vertex, vReductions, remaining, foldedVertexCount);
 		}
             if (!reduction) {
+                // std::cout << "Start twin" << std::endl;
                 reduction = removeTwin(partition, vertex, vReductions, remaining, vMarkedVertices, removedTwinCount, foldedTwinCount);
 		}
             // if (!reduction) {
@@ -1214,6 +1231,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         }
         // std::cout << partition << ": " << dependencyCheckingIterations << " iterations. Isolated clique reductions: " << isolatedCliqueCount << ", vertex fold count: " << foldedVertexCount << ", twin reduction count (removed): " << removedTwinCount  << ", twin reduction count (folded): " << foldedTwinCount << std::endl;
         // std::cout << partition << ": Starting reductions without dependency checking..." << std::endl;
+        // std::cout << "Start Unconfined" << std::endl;
         std::vector<int> verticesToRemove;
         for (int const vertex : inGraphPerPartition[partition]) {
             if(shouldTerminate()) {
@@ -1226,12 +1244,15 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
                     changed = true;
                     verticesToRemove.push_back(vertex);
                 }
+            } else {
+                verticesToRemove.push_back(vertex);
             }
             nonDependencyCheckingIterations++;
         }
         for(int vertex : verticesToRemove) {
             inGraphPerPartition[partition].Remove(vertex);
         }
+        // std::cout << "Finish Unconfined" << std::endl;
         // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
 
@@ -1511,9 +1532,10 @@ void parallel_reductions::ApplyKernelSolutionToReductions(vector<Reduction> cons
                 }
             break;*/
             case FOLDED_VERTEX:
-                assert(independent_set[reduction.GetNeighbors()[0]] == -1);
-                assert(independent_set[reduction.GetNeighbors()[1]] == -1);
-                if(independent_set[reduction.GetVertex()] == 0) {
+                assert(independent_set[reduction.GetNeighbors()[0]] == -1 || reduction.GetNeighbors()[0] == reduction.GetKeptVertex());
+                assert(independent_set[reduction.GetNeighbors()[1]] == -1 || reduction.GetNeighbors()[1] == reduction.GetKeptVertex());
+                assert(independent_set[reduction.GetVertex()] == -1);
+                if(independent_set[reduction.GetKeptVertex()] == 0) {
                     independent_set[reduction.GetNeighbors()[0]] = 0;
                     independent_set[reduction.GetNeighbors()[1]] = 0;
                     independent_set[reduction.GetVertex()] = 1;
@@ -1522,7 +1544,7 @@ void parallel_reductions::ApplyKernelSolutionToReductions(vector<Reduction> cons
                     independent_set[reduction.GetNeighbors()[1]] = 1;
                     independent_set[reduction.GetVertex()] = 0;
                 }
-            break;
+                break;
             case FOLDED_TWINS:
                 assert(reduction.GetNeighbors().size() == 3);
                 assert(independent_set[reduction.GetNeighbors()[0]] == -1);

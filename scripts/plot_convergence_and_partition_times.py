@@ -51,6 +51,8 @@ def readGraphFile(inputFile):
             partitionFinishSizes[partitionNum].append(int(words[-1]))
         if "Termination time" in line:
             terminationTimes.append(float(words[-1]))
+        if "New repitition: 1" in line:
+            break
     file.close()
     plt.yscale('log')
     plt.scatter(iterationStartTimes, iterationStartSizes, color="black", label="Start of iteration", marker="x")

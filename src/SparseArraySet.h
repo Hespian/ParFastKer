@@ -22,7 +22,9 @@ public:
 
     void Resize(size_t const size)
     {
+        assert(m_Elements.size() >= Size());
         m_Elements.resize(size, -1);
+        assert(m_Elements.size() >= Size());
     }
 
     void InitializeFromAdjacencyArray(std::vector<std::vector<int>> const &adjacencyArray, int const vertex)
@@ -34,6 +36,7 @@ public:
             m_iEnd++;
             m_Elements[m_iEnd] = neighbor;
         }
+        assert(m_Elements.size() >= Size());
     }
 
     void PrintSummary() const
@@ -54,8 +57,8 @@ public:
 
     // Inserts are not allowed after saving state, as it is currently not supported.
     void Insert(int const x) {
-        assert(m_Elements.size() >= Size());
         if (Contains(x)) return;
+        assert(m_Elements.size() > Size());
         assert(!m_bRemoved); // not allowed to insert and remove when saving states
         if (!m_States.empty()) m_bInserted = true;
         m_iEnd++;
@@ -63,6 +66,7 @@ public:
     }
 
     void Remove(int const x) {
+        assert(m_Elements.size() >= Size());
         for (int index = m_iBegin; index <= m_iEnd; index++) {
             if (m_Elements[index] == x) {
                 if (!m_States.empty()) m_bRemoved = true;
@@ -70,6 +74,7 @@ public:
                 m_Elements[index] = m_Elements[m_iEnd];
                 m_Elements[m_iEnd] = x;
                 m_iEnd--;
+                assert(m_Elements.size() > Size());
                 return;
             }
         }
