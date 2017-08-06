@@ -1090,8 +1090,8 @@ void parallel_reductions::reduce_graph_sequential() {
     {
         numThreads = omp_get_num_threads();
     }
-    //omp_set_num_threads(1);
-    std::cout << "numThreads: " << numThreads << std::endl;
+    omp_set_num_threads(1);
+    // std::cout << "numThreads: " << numThreads << std::endl;
     profilingInit(&profilingHelper, &neighbors, 1);
 
     int N = m_AdjacencyArray.size();
@@ -1142,6 +1142,7 @@ void parallel_reductions::reduce_graph_sequential() {
 
     bool changed = true;
     int numIterations = 0;
+    initGlobalBurstEstimator();
     while(changed) {
         numIterations++;
         ApplyReductions(0, ReductionsPerPartition[0], vMarkedVertices, remaining, tempInt1, tempInt2, fastSet, tempIntDoubleSize, time, numIsolatedCliqueReductions, numVertexFoldReductions, numTwinReductionsRemoved, numTwinReductionsFolded, removedUnconfinedVerticesCount, numDiamondReductions);
@@ -1186,12 +1187,14 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
     int nonDependencyCheckingIterations(0);
     // std::cout << partition << ": Starting reductions..." << std::endl;
     bool changed = true;
+    // Only do this for singe threaded and only in first iteration
+    bool finishedOneIteration = inGraphPerPartition[partition].Size() != neighbors.size();
     while (changed) {
         changed = false;
       //std::cout << partition << ": Starting reductions with dependency checking..." << std::endl;
         initDependencyCheckingEstimation(partition);
         while (!remaining.Empty()) {
-            if(shouldTerminate()) {
+            if(shouldTerminate() && finishedOneIteration) {
                 break;
             }
             int const vertex = *(remaining.begin());
@@ -1234,7 +1237,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         // std::cout << "Start Unconfined" << std::endl;
         std::vector<int> verticesToRemove;
         for (int const vertex : inGraphPerPartition[partition]) {
-            if(shouldTerminate()) {
+            if(shouldTerminate() && finishedOneIteration) {
                 break;
             }
             assert(partitions[vertex] == partition);
@@ -1256,6 +1259,7 @@ void parallel_reductions::ApplyReductions(int const partition, vector<Reduction>
         // remaining.Clear();
         // std::cout << partition << ": " << nonDependencyCheckingIterations << " iterations. Unconfined reductions: " << removedUnconfinedVerticesCount << std::endl;
 
+        finishedOneIteration = true;
         if(shouldTerminate()) {
             changed = false;
         }
