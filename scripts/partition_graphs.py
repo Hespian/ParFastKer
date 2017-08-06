@@ -6,6 +6,7 @@ graphDir = sys.argv[1]
 numPartitionSet = [1, 2, 4, 8, 16, 32]
 # numPartitionSet = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
 # numPartitionSet = [1, 32]
+# preconfigurations = ["ultrafast", "superfast"]
 preconfigurations = ["ultrafast"]
 
 def makedir(path):
@@ -98,7 +99,7 @@ def partitionGraph(graphPath, targetDir, preconfiguration):
         targetFile = os.path.join(targetDir, str(numPartitions) + ".partition")
         if not os.path.exists(targetFile):
             outputDumpFile = os.path.join(targetDir, "partition_output")
-            callString = "mpirun -n " + "32" + " ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress_reps " + graphPath + " --k=" + str(numPartitions) + " --seed 1337 --num_tries=3 --preconfiguration=" + preconfiguration + " &> " + outputDumpFile
+            callString = "mpirun -n " + str(numPartitions) + " ../../parallel_social_partitioning_package_weighted/deploy/parallel_label_compress_reps " + graphPath + " --k=" + str(numPartitions) + " --seed 1337 --num_tries=3 --preconfiguration=" + preconfiguration + " &> " + outputDumpFile
             print("echo '" + callString + "'")
             print(callString)
             outputFile = os.path.join(os.getcwd(), "tmppartition")
