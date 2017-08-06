@@ -117,9 +117,12 @@ int main(int argn, char **argv) {
         }
         if(numPartitions > 32)
             continue;
-        if(numPartitions != 32) {
+        if(!(numPartitions != 32 && numPartitions != 1)) {
             continue;
         }
+        // if(numPartitions != 1) {
+        //     continue;
+        // }
         //if(numPartitions != max_blocks)
         //  continue;
         std::cout << "---------------------------------------------------------------------" << std::endl;
@@ -139,29 +142,31 @@ int main(int argn, char **argv) {
                   std::cout << "New repitition: " << i  << std::endl;
                   std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
 
-                  full_reducer_parallel->reduce_graph();
+                  bool writeKernel = (i == mis_config.num_reps - 1 && numPartitions == 32);
+                  std::string kernel_path = "kernels/" + mis_config.graph_filename + ".quasikernel";
+                  full_reducer_parallel->reduce_graph(writeKernel, kernel_path);
 
-                  //   if(i == mis_config.num_reps - 1) {
-                  //     int numKernelEdges = 0;
-                  //     std::vector<std::vector<int>> kernel = full_reducer_parallel->getKernel();
-                  //     for(std::vector<int> neighbors : kernel) {
-                  // numKernelEdges += neighbors.size();
-                  //     }
-                  //     std::string kernel_path = "kernels/" + mis_config.graph_filename + ".kernel";
-                  //     std::cout << "Writing results file to " << kernel_path << std::endl;
-                  //     std::ofstream f(kernel_path.c_str());
-                  //     f << kernel.size() <<  " " <<  numKernelEdges / 2 << std::endl;
+                  if(i == mis_config.num_reps - 1 && numPartitions == 32) {
+                      int numKernelEdges = 0;
+                      std::vector<std::vector<int>> kernel = full_reducer_parallel->getKernel();
+                      for(std::vector<int> neighbors : kernel) {
+                          numKernelEdges += neighbors.size();
+                      }
+                      std::string kernel_path = "kernels/" + mis_config.graph_filename + ".kernel";
+                      std::cout << "Writing kernel to " << kernel_path << std::endl;
+                      std::ofstream f(kernel_path.c_str());
+                      f << kernel.size() <<  " " <<  numKernelEdges / 2 << std::endl;
 
-                  //     for(auto vertexNeighbors : kernel) {
-                  // std::sort(vertexNeighbors.begin(), vertexNeighbors.end());
-                  //             for(auto neighbor : vertexNeighbors) {
-                  //   f <<   neighbor + 1 << " " ;
-                  //             } 
-                  //     f <<  std::endl;
-                  //     }
+                      for(auto vertexNeighbors : kernel) {
+                          std::sort(vertexNeighbors.begin(), vertexNeighbors.end());
+                          for(auto neighbor : vertexNeighbors) {
+                              f <<   neighbor + 1 << " " ;
+                          } 
+                          f <<  std::endl;
+                      }
 
-                  //   f.close();
-                  //   }
+                      f.close();
+                  }
               }
     }
     }
