@@ -33,26 +33,30 @@ def readGraphFile(inputFile):
     partitionFinishTimes = [[] for i in range(32)]
     partitionFinishSizes = [[] for i in range(32)]
     terminationTimes = []
+    full_parallel = False
     for line in file:
         words = line.split()
-        if "Filename:" in line:
-            graphName = os.path.os.path.splitext(words[-1])[0]
-            print(graphName)
-        if "|-Nodes:" in line:
-            numVerticesString = words[-1]
-        if "|-Edges:" in line:
-            numEdgesString = words[-1]
-        if "Iteration" in line:
-            iterationStartTimes.append(float(words[4]))
-            iterationStartSizes.append(int(words[-1]))
-        if "Partition" in line:
-            partitionNum = int(words[1])
-            partitionFinishTimes[partitionNum].append(float(words[6]))
-            partitionFinishSizes[partitionNum].append(int(words[-1]))
-        if "Termination time" in line:
-            terminationTimes.append(float(words[-1]))
-        if "New repitition: 1" in line:
-            break
+        if "Number of blocks:" in line:
+            full_parallel = int(words[-1]) == 32
+        if full_parallel:
+            if "Filename:" in line:
+                graphName = os.path.os.path.splitext(words[-1])[0]
+                print(graphName)
+            if "|-Nodes:" in line:
+                numVerticesString = words[-1]
+            if "|-Edges:" in line:
+                numEdgesString = words[-1]
+            if "Iteration" in line:
+                iterationStartTimes.append(float(words[4]))
+                iterationStartSizes.append(int(words[-1]))
+            if "Partition" in line:
+                partitionNum = int(words[1])
+                partitionFinishTimes[partitionNum].append(float(words[6]))
+                partitionFinishSizes[partitionNum].append(int(words[-1]))
+            if "Termination time" in line:
+                terminationTimes.append(float(words[-1]))
+            if "New repitition: 1" in line:
+                break
     file.close()
     plt.yscale('log')
     plt.scatter(iterationStartTimes, iterationStartSizes, color="black", label="Start of iteration", marker="x")
@@ -77,6 +81,12 @@ def readGraphFile(inputFile):
     # plt.savefig(outputfile, format='pdf')
     # plt.clf()
 
+def getGraphName(filename):
+    res = filename.replace("-sorted", "")
+    res = res.replace("-LinearTimeKernel", "")
+    res = res.replace(".graph", "")
+    return res
+
 directory = sys.argv[1]
 outputfile = os.path.join(directory, "plots.pdf")
 
@@ -92,9 +102,10 @@ for subdir in os.listdir(directory):
     for resultsFile in os.listdir(resultsdir):
         resultsFilePath = os.path.join(resultsdir, resultsFile)
         if resultsFile.endswith(".graph") and os.path.isfile(resultsFilePath):
-            if not resultsFile in graphs:
+            graphname = getGraphName(resultsFile)
+            if not graphname in graphs:
                 nextPos = len(graphs) + 1
-                graphs[resultsFile] = nextPos
+                graphs[graphname] = nextPos
 
 print(numDirs)
 print(len(graphs))
@@ -106,7 +117,8 @@ for subdir in os.listdir(directory):
     for resultsFile in os.listdir(resultsdir):
         resultsFilePath = os.path.join(resultsdir, resultsFile)
         if resultsFile.endswith(".graph") and os.path.isfile(resultsFilePath):
-            plt.subplot(len(graphs), numDirs, currentdir + numDirs * (graphs[resultsFile] - 1) + 1)
+            graphname = getGraphName(resultsFile)
+            plt.subplot(len(graphs), numDirs, currentdir + numDirs * (graphs[graphname] - 1) + 1)
             readGraphFile(resultsFilePath)
     currentdir += 1
 

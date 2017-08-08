@@ -7,6 +7,7 @@ import csv
 
 
 graphs = ["uk-2002", "arabic-2005", "gsh-2015-tpd", "uk-2005", "it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "asia.osm", "road_usa", "europe.osm", "rgg_n26_s0",  "RHG-100000000-nodes-2000000000-edges", "delaunay_n24", "del26"]
+summaryTableGraphs = ["it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "rgg_n26_s0", "del26"]
 linearTimeDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
 nearLinearDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/NearLinear"
 partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/partitions"
@@ -188,6 +189,21 @@ def parallelQuasikernelComparsionNearLinear():
     writeToFile(headers, data, "parallelQuasiKernelComparisonNearLinear.csv")
     # return(tabulate(data, headers=headers, floatfmt=".3f", tablefmt="latex"))
 
+def getSummaryComparison():
+    data = []
+    headers = ["graph", "NearLinearTime", "NearLinearSize", "AkibaTime", "AkibaSize", "OurSequentialTime", "OurSequentialSize", "OurParallelTime", "OurParallelSize"]
+
+    for graph in summaryTableGraphs:
+        ourTimeAndSize = getOurTimeAndSize(graph)
+        nearLinearTimeAndSize = getNearLinearTimeAndSize(graph)
+        akibaTimeAndSize = getAkibaTimeAndSize(graph)
+        total_time_parallel = ourTimeAndSize["lineartime_time"] + ourTimeAndSize["partitioning_time"] + ourTimeAndSize["parallel_quasikernel_time"]
+        total_time_sequential = ourTimeAndSize["lineartime_time"] + ourTimeAndSize["sequential_quasikernel_time"]
+        line = [graph, nearLinearTimeAndSize["time"], nearLinearTimeAndSize["size"], akibaTimeAndSize["time"], akibaTimeAndSize["size"], total_time_sequential, ourTimeAndSize["sequential_quasikernel_size"], total_time_parallel, ourTimeAndSize["parallel_quasikernel_size"]]
+        data.append(RemoveNegatives(line))
+
+    writeToFile(headers, data, "summaryComparison.csv")
+
 def writeTableToLatexFile(table, filename):
     file = open(filename, "w")
     file.write("\\documentclass[varwidth=\\maxdimen, border=10pt]{standalone} \n")
@@ -209,3 +225,4 @@ ourAlgorithmParallel()
 parallelQuasikernelComparsionAkiba()
 parallelQuasikernelComparsionNearLinear()
 sequentialQuasikernelComparsionNearLinear()
+getSummaryComparison()

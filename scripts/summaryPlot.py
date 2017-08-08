@@ -86,6 +86,10 @@ for graph in graphs:
 # print(oursizeSequential)
 # print(ourtimeSequential)
 
+# print("We (parallel)")
+# print(oursizeParallel)
+# print(ourtimeParallel)
+
 # print("Akiba")
 # print(akibasize)
 # print(akibatime)
@@ -102,10 +106,7 @@ ax.scatter(ourtimeSequential, oursizeSequential, label="We (sequential)", marker
 ax.scatter(ourtimeParallel, oursizeParallel, label="We (parallel)", marker="+", color="black")
 ax.scatter(akibatime, akibasize, label="Akiba and Iwata", marker="^", edgecolors="blue", facecolors="none")
 ax.scatter(nearlineartime, nearlinearsize, label="NearLinear", marker="o", edgecolors="red", facecolors="none")
-# plt.xlim(0, 20)
-# plt.ylim(0, 20)
 plt.xlabel("time / fastest time")
 plt.ylabel("size / smallest size")
 ax.legend()
-# plt.show()
 plt.savefig("summaryplot.pdf")

@@ -17,6 +17,8 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
     num_diamond_reductions = {}
     sequential_time = {}
     sequential_size = {}
+    LP_time = {}
+    Rest_time = {}
     num_blocks = 0
     num_reps = 0
     current_rep = 0
@@ -32,6 +34,8 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
                 parallel_size[num_blocks] /= num_reps
                 sequential_time[num_blocks] /= num_reps
                 sequential_size[num_blocks] /= num_reps
+                LP_time[num_blocks] /= num_reps
+                Rest_time[num_blocks] /= num_reps
         if "Filename:" in line:
             graphName = words[-1]
         if "|-Nodes:" in line:
@@ -48,6 +52,8 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
             sequential_time[num_blocks] = 0
             sequential_size[num_blocks] = 0
             num_lp_removed[num_blocks] = 0
+            LP_time[num_blocks] = 0.0
+            Rest_time[num_blocks] = 0.0
         if "New repitition:" in line:
             parallel = True
             current_rep = int(words[-1])
@@ -61,6 +67,10 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
                 parallel_time[num_blocks] += float(words[6])
             if "Kernel size after parallel run: " in line:
                 parallel_size[num_blocks] += int(words[5])
+            if "LP time: " in line:
+                LP_time[num_blocks] += float(words[-1])
+            if "Rest time: " in line:
+                Rest_time[num_blocks] += float(words[-1])
             if "Before call to sequential reduce_graph" in line:
                 parallel = False
         else:
@@ -105,6 +115,15 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
     result["sequential_kernel_size"] = sequential_size[1]
     result["sequential_quasikernel_time"] = parallel_time[1]
     result["sequential_kernel_time"] = sequential_time[1]
+
+    result["scaling_quasikernel_time"] = parallel_time
+    result["scaling_partitioning_time"] = partitioning_times
+    result["scaling_partitioning_time"][1] = 0
+    result["scaling_total"] = dict()
+    for i in sizes:
+        result["scaling_total"][i] = result["scaling_quasikernel_time"][i] + result["scaling_partitioning_time"][i] + LinearTimeTime
+    result["scaling_LP_time"] = LP_time
+    result["scaling_Rest_time"] = Rest_time
     return result
 
 def getFirstTimeWithSizeLessThan(timesAndSizes, targetSize):
