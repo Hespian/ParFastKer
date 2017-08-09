@@ -34,6 +34,7 @@ def readGraphFile(inputFile):
     partitionFinishSizes = [[] for i in range(32)]
     terminationTimes = []
     full_parallel = False
+    finish_time = 100000
     for line in file:
         words = line.split()
         if "Number of blocks:" in line:
@@ -55,6 +56,11 @@ def readGraphFile(inputFile):
                 partitionFinishSizes[partitionNum].append(int(words[-1]))
             if "Termination time" in line:
                 terminationTimes.append(float(words[-1]))
+            if "Total time spent applying reductions" in line:
+                finish_time = float(words[-1])
+            if "Kernel size after parallel run" in line:
+                iterationStartTimes.append(finish_time)
+                iterationStartSizes.append(int(words[-1]))
             if "New repitition: 1" in line:
                 break
     file.close()
@@ -90,7 +96,7 @@ def getGraphName(filename):
 directory = sys.argv[1]
 outputfile = os.path.join(directory, "plots.pdf")
 
-plt.figure(figsize=(20,30))
+plt.figure(figsize=(15,30))
 
 graphs = {}
 numDirs = 0
@@ -124,4 +130,5 @@ for subdir in os.listdir(directory):
 
 # plt.subplots_adjust(top=5)
 # plt.show()
+plt.tight_layout()
 plt.savefig(outputfile, format='pdf', height = 100)

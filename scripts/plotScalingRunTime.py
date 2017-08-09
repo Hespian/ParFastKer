@@ -11,16 +11,20 @@ import get_data_ours
 
 
 
+
 graphs = ["it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "rgg_n26_s0", "del26"]
 
 linearTimeDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
 partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/partitions"
 ourTimeDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernelsScalingAll"
 
-def makePlot(sizes, data, colors, name, big):
-    cmapIndex = 1
+def makePlot(sizes, data, colors, markers, name, big):
+    plt.rc('font', size=14)
+    if not big:
+        plt.rc('font', size=30)
+    cmapIndex = 0
     for graph in graphs:
-        plt.loglog(sizes, data[graph], color=colors[cmapIndex], label=graph, basex=2, marker="x")
+        plt.loglog(sizes, data[graph], color=colors[cmapIndex], label=graph, basex=2, marker=markers[cmapIndex])
         cmapIndex += 1
     plt.axis([1,32,0,10**2])
     plt.xlabel('Number of threads')
@@ -28,7 +32,6 @@ def makePlot(sizes, data, colors, name, big):
     plt.tick_params(axis='y', which='both', left='on', right='on')
     if big:
         plt.legend(loc="upper left")
-    plt.rc('font', size=20)
     if sizes[0] != 1:
         sizes.insert(0,1)
     plt.xticks(sizes, sizes)
@@ -36,7 +39,9 @@ def makePlot(sizes, data, colors, name, big):
     plt.clf()
 
 cmap = plt.get_cmap('hsv')
-colors = cmap(np.linspace(0, 1.0, len(graphs) + 1))
+# colors = cmap(np.linspace(0, 1.0, len(graphs) + 1))
+colors = ["blue", "green", "red", "yellow", "magenta", "black"]
+markers = ["x", "o", "^", "+" , "s", "d"]
 
 sizes = []
 overall = dict()
@@ -47,16 +52,16 @@ Rest = dict()
 for graph in graphs:
     res = get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, ourTimeDir)
     sizes = sorted(res["scaling_quasikernel_time"].keys())
-    overall[graph] = [res["scaling_total"][1] / res["scaling_total"][i] for i in sizes]
-    quasikernel[graph] = [res["scaling_quasikernel_time"][1] / res["scaling_quasikernel_time"][i] for i in sizes]
+    overall[graph] = [res["scaling_total"][2] / res["scaling_total"][i] for i in sizes]
+    quasikernel[graph] = [res["scaling_quasikernel_time"][2] / res["scaling_quasikernel_time"][i] for i in sizes]
     partitioning[graph] = [res["scaling_partitioning_time"][2] / res["scaling_partitioning_time"][i] for i in sizes[1:]]
-    LP[graph] = [res["scaling_LP_time"][1] / res["scaling_LP_time"][i] for i in sizes]
-    Rest[graph] = [res["scaling_Rest_time"][1] / res["scaling_Rest_time"][i] for i in sizes]
+    LP[graph] = [res["scaling_LP_time"][2] / res["scaling_LP_time"][i] for i in sizes]
+    Rest[graph] = [res["scaling_Rest_time"][2] / res["scaling_Rest_time"][i] for i in sizes]
 
-makePlot(sizes, overall, colors, "Overall.pdf", True)
-makePlot(sizes, quasikernel, colors, "Quasikernel.pdf", False)
-makePlot(sizes[1:], partitioning, colors, "Partitioning.pdf", False)
-makePlot(sizes, LP, colors, "LP.pdf", False)
-makePlot(sizes, Rest, colors, "Rest.pdf", False)
+makePlot(sizes, overall, colors, markers, "Overall.pdf", True)
+makePlot(sizes, quasikernel, colors, markers, "Quasikernel.pdf", False)
+makePlot(sizes[1:], partitioning, colors, markers, "Partitioning.pdf", False)
+makePlot(sizes, LP, colors, markers, "LP.pdf", False)
+makePlot(sizes, Rest, colors, markers, "Rest.pdf", False)
 
 

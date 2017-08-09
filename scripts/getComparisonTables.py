@@ -1,18 +1,30 @@
 import get_data_ours
 import get_data_akiba
 import get_data_NearLinear
+import renameGraphs
 from tabulate import tabulate
 import os
 import csv
 
 
 graphs = ["uk-2002", "arabic-2005", "gsh-2015-tpd", "uk-2005", "it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "asia.osm", "road_usa", "europe.osm", "rgg_n26_s0",  "RHG-100000000-nodes-2000000000-edges", "delaunay_n24", "del26"]
-summaryTableGraphs = ["it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "rgg_n26_s0", "del26"]
+summaryTableGraphs = ["it-2004", "webbase-2001", "asia.osm", "europe.osm", "rgg_n26_s0", "RHG-100000000-nodes-2000000000-edges", "del26"]
 linearTimeDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
 nearLinearDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/NearLinear"
 partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/partitions"
 ourTimeDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernels"
 akibaDir = "/home/dhespe/Documents/parallel_reductions/akiba_vertex_cover/results"
+graphdir = "/home/dhespe/Documents/parallel_reductions/graphs"
+
+def getGraphSize(graph):
+    result = dict()
+    for filename in os.listdir(graphdir):
+        if filename.endswith(".graph") and filename.startswith(graph):
+            with open(os.path.join(graphdir, filename), "r") as file:
+                for line in file:
+                    if not line.startswith("%"):
+                        words = line.split()
+                        return int(words[0])
 
 def getOurTimeForSize(graph, targetSize):
     return get_data_ours.getOurTimeForSize(graph, linearTimeDir, partitioningDir, ourTimeDir, targetSize)
@@ -29,7 +41,7 @@ def getAkibaTimeForSize(graph, targetsize):
 def getNearLinearTimeAndSize(graph):
     return get_data_NearLinear.getNearLinearTimeAndSize(graph, nearLinearDir)
 
-def RemoveNegatives(line):
+def RemoveNegatives(line, decimalPlaces=3):
     result = []
     for item in line:
         stringitem = ""
@@ -42,12 +54,11 @@ def RemoveNegatives(line):
             if item <= 0:
                 stringitem = "*"
             else:
-                stringitem = "\\numprint{%.3f}" % item
+                formatstring = "\\numprint{%." + str(decimalPlaces) + "f}"
+                stringitem = formatstring % item
         elif isinstance(item, str):
-            stringitem = item.replace("_", "\\_")
-
-        if item ==   "RHG-100000000-nodes-2000000000-edges":
-            stringitem = "RHG-100M-2G"
+            stringitem = renameGraphs.renameGraph(item)
+            stringitem = stringitem.replace("_", "\\_")
         result.append(stringitem)
     return result
 
@@ -189,9 +200,21 @@ def parallelQuasikernelComparsionNearLinear():
     writeToFile(headers, data, "parallelQuasiKernelComparisonNearLinear.csv")
     # return(tabulate(data, headers=headers, floatfmt=".3f", tablefmt="latex"))
 
+def percentOf(value, of):
+    return value * 100 / of
+
+def scaleToSameOrder(sizes):
+    minSize = min(sizes)
+    if minSize >= 100000:
+        return ["\\numprint{%.1f} M" % (size / 1000000) for size in sizes]
+    elif minSize >= 1000:
+        return ["\\numprint{%.1f} K" % (size / 1000) for size in sizes]
+    else:
+        return ["\\numprint{"+ str(int(size)) + "}" if size >= 0 else "*" for size in sizes]
+
 def getSummaryComparison():
     data = []
-    headers = ["graph", "NearLinearTime", "NearLinearSize", "AkibaTime", "AkibaSize", "OurSequentialTime", "OurSequentialSize", "OurParallelTime", "OurParallelSize"]
+    headers = ["graph", "graphSize", "NearLinearTime", "NearLinearSize", "AkibaTime", "AkibaSize", "OurSequentialTime", "OurSequentialSize", "OurParallelTime", "OurParallelSize", "ParallelSpeedupAkiba"]
 
     for graph in summaryTableGraphs:
         ourTimeAndSize = getOurTimeAndSize(graph)
@@ -199,8 +222,12 @@ def getSummaryComparison():
         akibaTimeAndSize = getAkibaTimeAndSize(graph)
         total_time_parallel = ourTimeAndSize["lineartime_time"] + ourTimeAndSize["partitioning_time"] + ourTimeAndSize["parallel_quasikernel_time"]
         total_time_sequential = ourTimeAndSize["lineartime_time"] + ourTimeAndSize["sequential_quasikernel_time"]
-        line = [graph, nearLinearTimeAndSize["time"], nearLinearTimeAndSize["size"], akibaTimeAndSize["time"], akibaTimeAndSize["size"], total_time_sequential, ourTimeAndSize["sequential_quasikernel_size"], total_time_parallel, ourTimeAndSize["parallel_quasikernel_size"]]
-        data.append(RemoveNegatives(line))
+        parallel_speedup_over_akiba = akibaTimeAndSize["time"] / total_time_parallel
+        graphSize = getGraphSize(graph)
+        graphSizeString = "\\numprint{%.1f} M" % (graphSize / 1000000)
+        nearLinearSizeString, AkibaSizeString, SequentialSizeString, ParallelSizeString = scaleToSameOrder([nearLinearTimeAndSize["size"], akibaTimeAndSize["size"], ourTimeAndSize["sequential_quasikernel_size"], ourTimeAndSize["parallel_quasikernel_size"]])
+        line = [graph, graphSizeString, nearLinearTimeAndSize["time"], nearLinearSizeString, akibaTimeAndSize["time"], AkibaSizeString, total_time_sequential, SequentialSizeString, total_time_parallel, ParallelSizeString, parallel_speedup_over_akiba]
+        data.append(RemoveNegatives(line, 1))
 
     writeToFile(headers, data, "summaryComparison.csv")
 
