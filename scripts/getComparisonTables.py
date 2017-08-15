@@ -1,6 +1,7 @@
 import get_data_ours
 import get_data_akiba
 import get_data_NearLinear
+import get_data_LinearTime
 import renameGraphs
 from tabulate import tabulate
 import os
@@ -15,6 +16,7 @@ partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/
 ourTimeDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernels"
 akibaDir = "/home/dhespe/Documents/parallel_reductions/akiba_vertex_cover/results"
 graphdir = "/home/dhespe/Documents/parallel_reductions/graphs"
+noReductionStoppingDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernelsNoReductionStopping"
 
 def getGraphSize(graph):
     result = dict()
@@ -40,6 +42,9 @@ def getAkibaTimeForSize(graph, targetsize):
 
 def getNearLinearTimeAndSize(graph):
     return get_data_NearLinear.getNearLinearTimeAndSize(graph, nearLinearDir)
+
+def getLinearTimeTimeAndSize(graph):
+    return get_data_LinearTime.getLinearTimeTimeAndSize(graph, linearTimeDir)
 
 def RemoveNegatives(line, decimalPlaces=3):
     result = []
@@ -204,15 +209,50 @@ def percentOf(value, of):
     return value * 100 / of
 
 def scaleToSameOrder(sizes):
-    minSize = min(sizes)
+    minSize = min(filter(lambda x: x >= 0, sizes))
     if minSize >= 100000:
-        return ["\\numprint{%.1f} M" % (size / 1000000) for size in sizes]
+        return ["\\numprint{%.1f}M" % (size / 1000000) if size >= 0 else "*" for size in sizes]
     elif minSize >= 1000:
-        return ["\\numprint{%.1f} K" % (size / 1000) for size in sizes]
+        return ["\\numprint{%.1f}K" % (size / 1000) if size >= 0 else "*" for size in sizes]
     else:
         return ["\\numprint{"+ str(int(size)) + "}" if size >= 0 else "*" for size in sizes]
 
-def getSummaryComparison():
+def addNumprint(numbers):
+        return ["\\numprint{%.1f}" % number if number >= 0 else "*" for number in numbers]
+
+def markSmallest(numbers, numstrings, textstyle):
+    minNumber = min(filter(lambda x: x >= 0, numbers))
+    flags = [x == minNumber for x in numbers]
+    return[textstyle + "{" + numstring + "}" if flag else numstring for flag, numstring in zip(flags, numstrings)]
+
+
+def getSummaryComparison(graphsForTable, filename):
+    data = []
+    headers = ["graph", "graphSize", "LinearTimeTime", "LinearTimeSize", "NearLinearTime", "NearLinearSize", "AkibaTime", "AkibaSize", "OurSequentialTime", "OurSequentialSize", "OurParallelTime", "OurParallelSize", "ParallelSpeedupAkiba"]
+
+    for graph in graphsForTable:
+        ourTimeAndSize = getOurTimeAndSize(graph)
+        nearLinearTimeAndSize = getNearLinearTimeAndSize(graph)
+        linearTimeTimeAndSize = getLinearTimeTimeAndSize(graph)
+        akibaTimeAndSize = getAkibaTimeAndSize(graph)
+        total_time_parallel = ourTimeAndSize["lineartime_time"] + ourTimeAndSize["partitioning_time"] + ourTimeAndSize["parallel_quasikernel_time"]
+        total_time_sequential = ourTimeAndSize["lineartime_time"] + ourTimeAndSize["sequential_quasikernel_time"]
+        parallel_speedup_over_akiba = akibaTimeAndSize["time"] / total_time_parallel
+        graphSize = getGraphSize(graph)
+        graphSizeString = "\\numprint{" + str(int(round(graphSize / 1000000, 0))) + "}M"
+
+        linearTimeSizeString, nearLinearSizeString, AkibaSizeString, SequentialSizeString, ParallelSizeString = scaleToSameOrder([linearTimeTimeAndSize["size"], nearLinearTimeAndSize["size"], akibaTimeAndSize["size"], ourTimeAndSize["sequential_quasikernel_size"], ourTimeAndSize["parallel_quasikernel_size"]])
+        linearTimeSizeString, nearLinearSizeString, AkibaSizeString, SequentialSizeString, ParallelSizeString = markSmallest([linearTimeTimeAndSize["size"], nearLinearTimeAndSize["size"], akibaTimeAndSize["size"], ourTimeAndSize["sequential_quasikernel_size"], ourTimeAndSize["parallel_quasikernel_size"]], [linearTimeSizeString, nearLinearSizeString, AkibaSizeString, SequentialSizeString, ParallelSizeString], "\\textit")
+
+        linearTimeTimeString, nearLinearTimeString, AkibaTimeString, SequentialTimeString, ParallelTimeString = addNumprint([linearTimeTimeAndSize["time"], nearLinearTimeAndSize["time"], akibaTimeAndSize["time"], total_time_sequential, total_time_parallel])
+        linearTimeTimeString, nearLinearTimeString, AkibaTimeString, SequentialTimeString, ParallelTimeString = markSmallest([linearTimeTimeAndSize["time"], nearLinearTimeAndSize["time"], akibaTimeAndSize["time"], total_time_sequential, total_time_parallel], [linearTimeTimeString, nearLinearTimeString, AkibaTimeString, SequentialTimeString, ParallelTimeString], "\\textbf")
+
+        line = [graph, graphSizeString, linearTimeTimeString, linearTimeSizeString, nearLinearTimeString, nearLinearSizeString, AkibaTimeString, AkibaSizeString, SequentialTimeString, SequentialSizeString, ParallelTimeString, ParallelSizeString, parallel_speedup_over_akiba]
+        data.append(RemoveNegatives(line, 1))
+
+    writeToFile(headers, data, filename)
+
+def getSummaryComparisonPercent():
     data = []
     headers = ["graph", "graphSize", "NearLinearTime", "NearLinearSize", "AkibaTime", "AkibaSize", "OurSequentialTime", "OurSequentialSize", "OurParallelTime", "OurParallelSize", "ParallelSpeedupAkiba"]
 
@@ -225,11 +265,38 @@ def getSummaryComparison():
         parallel_speedup_over_akiba = akibaTimeAndSize["time"] / total_time_parallel
         graphSize = getGraphSize(graph)
         graphSizeString = "\\numprint{%.1f} M" % (graphSize / 1000000)
-        nearLinearSizeString, AkibaSizeString, SequentialSizeString, ParallelSizeString = scaleToSameOrder([nearLinearTimeAndSize["size"], akibaTimeAndSize["size"], ourTimeAndSize["sequential_quasikernel_size"], ourTimeAndSize["parallel_quasikernel_size"]])
+        nearLinearSizeString = percentOf(nearLinearTimeAndSize["size"], graphSize)
+        AkibaSizeString = percentOf(akibaTimeAndSize["size"], graphSize)
+        SequentialSizeString = percentOf(ourTimeAndSize["sequential_quasikernel_size"], graphSize)
+        ParallelSizeString = percentOf(ourTimeAndSize["parallel_quasikernel_size"], graphSize)
         line = [graph, graphSizeString, nearLinearTimeAndSize["time"], nearLinearSizeString, akibaTimeAndSize["time"], AkibaSizeString, total_time_sequential, SequentialSizeString, total_time_parallel, ParallelSizeString, parallel_speedup_over_akiba]
-        data.append(RemoveNegatives(line, 1))
+        data.append(RemoveNegatives(line, 2))
 
-    writeToFile(headers, data, "summaryComparison.csv")
+    writeToFile(headers, data, "summaryComparisonPercent.csv")
+
+
+def reductionStoppingcomparison():
+    data = []
+    headers = ["graph", "sizeDiff", "speedup"]
+
+    for graph in graphs:
+        resultsWith = getOurTimeAndSize(graph)
+        resultsWithout = get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, noReductionStoppingDir)
+        timeWith = resultsWith["lineartime_time"] + resultsWith["partitioning_time"] + resultsWith["parallel_quasikernel_time"]
+        timeWithout = resultsWithout["lineartime_time"] + resultsWithout["partitioning_time"] + resultsWithout["parallel_quasikernel_time"]
+        speedup = timeWithout / timeWith
+        sizeWith = resultsWith["parallel_quasikernel_size"]
+        sizeWithout = resultsWithout["parallel_quasikernel_size"]
+        sizeDifference = sizeWithout - sizeWith
+        if round(speedup, 1) == 1.0:
+            continue
+        sizeDiffString = "\\numprint{" + str(int(sizeDifference)) + "}"
+        line = [graph, sizeDiffString, speedup]
+        data.append(RemoveNegatives(line,1))
+        # data.append(line)
+
+    writeToFile(headers, data, "reductionStoppingComparison.csv")
+    # print(tabulate(data, headers=headers, floatfmt=".3f"))
 
 def writeTableToLatexFile(table, filename):
     file = open(filename, "w")
@@ -252,4 +319,14 @@ ourAlgorithmParallel()
 parallelQuasikernelComparsionAkiba()
 parallelQuasikernelComparsionNearLinear()
 sequentialQuasikernelComparsionNearLinear()
-getSummaryComparison()
+getSummaryComparison(summaryTableGraphs ,"summaryComparison.csv")
+getSummaryComparison(graphs ,"allGraphsComparison.csv")
+getSummaryComparisonPercent()
+reductionStoppingcomparison()
+
+# for graph in graphs:
+#     ourTimeAndSize = getOurTimeAndSize(graph)
+#     akibaTimeAndSize = getAkibaTimeAndSize(graph)
+#     graphSize = getGraphSize(graph)
+#     sizediff = (ourTimeAndSize["parallel_quasikernel_size"] - akibaTimeAndSize["size"]) / graphSize
+#     print(graph + " " + str(sizediff))

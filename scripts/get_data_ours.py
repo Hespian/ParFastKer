@@ -111,10 +111,11 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
     result["parallel_kernel_size"] = sequential_size[max_blocks]
     result["parallel_quasikernel_time"] = parallel_time[max_blocks]
     result["parallel_kernel_time"] = sequential_time[max_blocks]
-    result["sequential_quasikernel_size"] = parallel_size[1]
-    result["sequential_kernel_size"] = sequential_size[1]
-    result["sequential_quasikernel_time"] = parallel_time[1]
-    result["sequential_kernel_time"] = sequential_time[1]
+    if 1 in sizes:
+        result["sequential_quasikernel_size"] = parallel_size[1]
+        result["sequential_kernel_size"] = sequential_size[1]
+        result["sequential_quasikernel_time"] = parallel_time[1]
+        result["sequential_kernel_time"] = sequential_time[1]
 
     result["scaling_quasikernel_time"] = parallel_time
     result["scaling_partitioning_time"] = partitioning_times

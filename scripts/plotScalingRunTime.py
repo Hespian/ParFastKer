@@ -7,7 +7,9 @@ import numpy as np
 from matplotlib.ticker import *
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib2tikz import save as tikz_save
+from IPython import embed
 import get_data_ours
+import renameGraphs
 
 
 
@@ -18,29 +20,26 @@ linearTimeDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/r
 partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/partitions"
 ourTimeDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernelsScalingAll"
 
-def makePlot(sizes, data, colors, markers, name, big):
-    plt.rc('font', size=14)
-    if not big:
-        plt.rc('font', size=30)
+def makePlot(sizes, data, facecolors, edgecolors, markers, name, ax):
+    # if not big:
     cmapIndex = 0
     for graph in graphs:
-        plt.loglog(sizes, data[graph], color=colors[cmapIndex], label=graph, basex=2, marker=markers[cmapIndex])
+        ax.loglog(sizes, data[graph], color=edgecolors[cmapIndex], markerfacecolor=facecolors[cmapIndex], markeredgecolor=edgecolors[cmapIndex], label=renameGraphs.renameGraph(graph), basex=2, marker=markers[cmapIndex])
         cmapIndex += 1
-    plt.axis([1,32,0,10**2])
-    plt.xlabel('Number of threads')
-    plt.ylabel('Speedup')
-    plt.tick_params(axis='y', which='both', left='on', right='on')
-    if big:
-        plt.legend(loc="upper left")
+    ax.set_xlim([1,32])
+    ax.set_ylim([0,10**2])
+    ax.set_xlabel('Number of threads', fontsize=14)
+    ax.tick_params(axis='y', which='both', left='on', right='on')
     if sizes[0] != 1:
         sizes.insert(0,1)
-    plt.xticks(sizes, sizes)
-    plt.savefig(name, bbox_inches="tight")
-    plt.clf()
+    ax.set_title(name, fontsize=14)
+    ax.set_xticks(sizes)
+    ax.set_xticklabels(sizes)
 
 cmap = plt.get_cmap('hsv')
 # colors = cmap(np.linspace(0, 1.0, len(graphs) + 1))
-colors = ["blue", "green", "red", "yellow", "magenta", "black"]
+facecolors = ["blue", "none", "none", "darkorange", "none", "none"]
+edgecolors = ["blue", "green", "red", "darkorange", "magenta", "black"]
 markers = ["x", "o", "^", "+" , "s", "d"]
 
 sizes = []
@@ -58,10 +57,28 @@ for graph in graphs:
     LP[graph] = [res["scaling_LP_time"][2] / res["scaling_LP_time"][i] for i in sizes]
     Rest[graph] = [res["scaling_Rest_time"][2] / res["scaling_Rest_time"][i] for i in sizes]
 
-makePlot(sizes, overall, colors, markers, "Overall.pdf", True)
-makePlot(sizes, quasikernel, colors, markers, "Quasikernel.pdf", False)
-makePlot(sizes[1:], partitioning, colors, markers, "Partitioning.pdf", False)
-makePlot(sizes, LP, colors, markers, "LP.pdf", False)
-makePlot(sizes, Rest, colors, markers, "Rest.pdf", False)
+# print("Overall")
+# for graph in graphs:
+#     print(overall[graph][-1])
+
+# print("----------------------------------")
+# print("rest")
+# for graph in graphs:
+#     print(Rest[graph][-1])
+
+# print("----------------------------------")
+# print("LP")
+# for graph in graphs:
+#     print(LP[graph][-1])
 
 
+plt.rc('font', size=14)
+f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(9.6, 2.4), sharey=True)
+ax1.set_ylabel('Speedup')
+makePlot(sizes, overall, facecolors, edgecolors, markers, "Overall", ax1)
+# makePlot(sizes, quasikernel, colors, markers, "Quasikernel.pdf", False)
+# makePlot(sizes[1:], partitioning, colors, markers, "Partitioning.pdf", False)
+makePlot(sizes, Rest, facecolors, edgecolors, markers, "Local Reductions", ax2)
+makePlot(sizes, LP, facecolors, edgecolors, markers, "LP Reduction", ax3)
+plt.legend(bbox_to_anchor=(-0.7,-0.7), ncol=3, loc='lower center', fontsize=14, frameon=False)
+plt.savefig("Scaling.pdf", bbox_inches="tight")

@@ -1,6 +1,7 @@
 import get_data_ours
 import get_data_akiba
 import get_data_NearLinear
+import get_data_LinearTime
 import os
 import matplotlib.pyplot as plt
 
@@ -32,12 +33,17 @@ def getAkibaTimeAndSize(graph):
 def getNearLinearTimeAndSize(graph):
     return get_data_NearLinear.getNearLinearTimeAndSize(graph, nearLinearDir)
 
+def getLinearTimeTimeAndSize(graph):
+    return get_data_LinearTime.getLinearTimeTimeAndSize(graph, linearTimeDir)
+
 def minProperty(graph, prop):
     oursequential = getOurTimeAndSizeSequential(graph)[prop]
     ourparallel = getOurTimeAndSizeParallel(graph)[prop]
     akiba = getAkibaTimeAndSize(graph)[prop]
     nearLinear = getNearLinearTimeAndSize(graph)[prop]
-    data = [oursequential, ourparallel, akiba, nearLinear]
+    linearTime = getLinearTimeTimeAndSize(graph)[prop]
+    data = [oursequential, ourparallel, akiba, nearLinear, linearTime]
+    # data = [oursequential, ourparallel, akiba, nearLinear]
     data = filter(lambda x : x >= 0, data)
     minimum = min(data)
     if minimum == 0:
@@ -52,10 +58,12 @@ akibasize = []
 akibatime = []
 nearlinearsize = []
 nearlineartime = []
+lineartimesize = []
+lineartimetime = []
 
 for graph in graphs:
-    minsize = minProperty(graph, "size")
-    mintime = minProperty(graph, "time")
+    minsize = getAkibaTimeAndSize(graph)["size"]
+    mintime = getAkibaTimeAndSize(graph)["time"]
 
     oss = getOurTimeAndSizeSequential(graph)["size"] / minsize
     ots = getOurTimeAndSizeSequential(graph)["time"] / mintime
@@ -81,6 +89,11 @@ for graph in graphs:
         nearlinearsize.append(nls)
         nearlineartime.append(nlt)
 
+    lts = getLinearTimeTimeAndSize(graph)["size"] / minsize
+    ltt = getLinearTimeTimeAndSize(graph)["time"] / mintime
+    if nls > 0 and nlt > 0:
+        lineartimesize.append(lts)
+        lineartimetime.append(ltt)
 
 # print("We")
 # print(oursizeSequential)
@@ -98,16 +111,24 @@ for graph in graphs:
 # print(nearlinearsize)
 # print(nearlineartime)
 
+# print("LinearTime")
+# print(lineartimesize)
+# print(lineartimetime)
+
 plt.rc('font', size=14)
-fig = plt.figure()
+fig = plt.figure(figsize=(3.2, 2.4))
 ax = fig.add_subplot(1,1,1)
+plt.title("Summary", fontsize=14)
 ax.set_yscale("log")
 ax.set_xscale("log")
 ax.scatter(ourtimeSequential, oursizeSequential, label="FastKer", marker="x", color="green")
 ax.scatter(ourtimeParallel, oursizeParallel, label="ParFastKer", marker="+", color="black")
-ax.scatter(akibatime, akibasize, label="VCSolver", marker="^", edgecolors="blue", facecolors="none")
+# ax.scatter(akibatime, akibasize, label="VCSolver", marker="^", edgecolors="blue", facecolors="none")
 ax.scatter(nearlineartime, nearlinearsize, label="NearLinear", marker="o", edgecolors="red", facecolors="none")
-plt.xlabel("time / fastest time")
-plt.ylabel("size / smallest size")
-ax.legend()
-plt.savefig("summaryplot.pdf", bbox_inches="tight")
+ax.scatter(lineartimetime, lineartimesize, label="LinearTime", marker="^", edgecolors="magenta", facecolors="none")
+plt.xlabel("time / VCSolver time")
+plt.ylabel("size / VCSolver size")
+plt.xticks([0.0001, 0.01, 1])
+ax.legend(bbox_to_anchor=(0.35,-0.7), ncol=2, loc='lower center', frameon=False, borderaxespad=0., mode="expand")
+plt.savefig("summaryplot_vcsolver_baseline.pdf", bbox_inches="tight")
+# plt.show()
