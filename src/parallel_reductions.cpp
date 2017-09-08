@@ -88,6 +88,7 @@ parallel_reductions::~parallel_reductions()
 }
 
 std::vector<std::vector<int>> parallel_reductions::getKernel() {
+  double startclock = omp_get_wtime();
     graph_to_kernel_map = std::vector<int> (m_AdjacencyArray.size());
     int nodecount = 0;
     for(int node = 0; node < m_AdjacencyArray.size(); node++) {
@@ -100,6 +101,7 @@ std::vector<std::vector<int>> parallel_reductions::getKernel() {
     std::vector<std::vector<int>> kernel_adj(nodecount);
 
     // Build adjacency vectors
+    #pragma omp parallel for
     for(int node = 0; node < m_AdjacencyArray.size(); node++) {
         if(inGraph.Contains(node)) {
             kernel_adj[graph_to_kernel_map[node]].reserve(neighbors[node].Size());
@@ -111,6 +113,8 @@ std::vector<std::vector<int>> parallel_reductions::getKernel() {
             std::sort(kernel_adj[graph_to_kernel_map[node]].begin(), kernel_adj[graph_to_kernel_map[node]].end());
         }
     }
+    double endclock = omp_get_wtime();
+    std::cout << "getKernel took " << (endclock - startclock) << std::endl;
     return kernel_adj;
 }
 
@@ -1059,6 +1063,16 @@ void parallel_reductions::reduce_graph_parallel() {
     int sum_reductions = sum_isolated_clique + sum_vertex_fold + sum_twin_removed + sum_twin_folded + sum_unconfined + sum_diamond + numLPReductions;
     assert(sum_reductions == neighbors.size() - inGraph.Size());
     assert(checkDegrees());
+
+    int is_offset = 0;
+    is_offset += sum_vertex_fold / 2;
+    is_offset += sum_twin_folded / 2;
+    for(int vertex = 0; vertex < m_AdjacencyArray.size(); vertex++) {
+      if(independent_set[vertex] == 0) {
+        is_offset++;
+      }
+    }
+    std::cout << "Independent set offset: " << is_offset << std::endl;
 }
 
 bool parallel_reductions::checkDegrees() {
