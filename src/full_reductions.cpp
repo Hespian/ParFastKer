@@ -20,6 +20,7 @@ void full_reductions::reduce_graph() {
 }
 
 void full_reductions::reduce_graph(bool writeKernel, std::string filepath) {
+    int numPartitions = *std::max_element(partitions.begin(), partitions.end());
 	std::cout << "Creating object" << std::endl;
 	parallel_reducers.push_back(std::unique_ptr<parallel_reductions>(new parallel_reductions(adj, partitions)));
 	std::cout << "Finished creating object" << std::endl;
@@ -31,7 +32,8 @@ void full_reductions::reduce_graph(bool writeKernel, std::string filepath) {
     if(writeKernel) {
         writeParallelKernel(filepath);
     }
-	parallel_reducers.back()->reduce_graph_sequential();
+    if(numPartitions == 1 || numPartitions == 32)
+        parallel_reducers.back()->reduce_graph_sequential();
 	std::cout << "After call to sequential reduce_graph" << std::endl;
 	std::cout << "Kernel size after sequential run: " << parallel_reducers.back()->size() << std::endl;
 }
