@@ -828,6 +828,7 @@ void parallel_reductions::reduce_graph_parallel() {
     }
     std::cout << "num threads: " << numThreads << std::endl;
 
+    int numPartitionsReal = *max_element(partitions.begin(), partitions.end()) + 1;
     int numPartitions = partition_nodes.size();
     profilingInit(&profilingHelper, &neighbors, numPartitions);
 
@@ -1005,7 +1006,13 @@ void parallel_reductions::reduce_graph_parallel() {
         // changed = false;
         tmpClock = omp_get_wtime();
 
+        if(numPartitionsReal != numPartitions) {
+            omp_set_num_threads(numPartitionsReal);
+        }
         changed = LPReduction(remainingPerPartition, tempInt1PerTid, numLPReductions);
+        if(numPartitionsReal != numPartitions) {
+            omp_set_num_threads(numPartitions);
+        }
         // changed = false;
         LPTime += omp_get_wtime() - tmpClock;
         // std::cout << "Size after iteration: " << inGraph.Size() << std::endl;
@@ -1097,7 +1104,7 @@ bool parallel_reductions::checkDegrees() {
 }
 
 void parallel_reductions::reduce_graph_sequential() {
-    return;
+    // return;
     long numThreads;
 
     #pragma omp parallel
