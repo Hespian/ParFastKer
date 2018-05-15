@@ -90,15 +90,21 @@ def getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
             if "avg partitioning time elapsed" in line:
                 words = line.split()
                 partitioning_times[size] = float(words[-1])
+            if "time spent for partitioning" in line:
+                words = line.split()
+                partitioning_times[size] = float(words[-1])
         file.close()
 
-    file = open(linearTimeOutputFile, "r")
     num_LinearTime_runs = 0
     LinearTimeTime = 0.0
-    for line in file:
-        if "Process time" in line:
-            LinearTimeTime += float(line.split()[2][:-1]) / 1000000
-            num_LinearTime_runs += 1
+    if os.path.isfile(linearTimeOutputFile):
+        file = open(linearTimeOutputFile, "r")
+        for line in file:
+            if "Process time" in line:
+                LinearTimeTime += float(line.split()[2][:-1]) / 1000000
+                num_LinearTime_runs += 1
+    else:
+        print("No LinearTime log:" + linearTimeOutputFile)
     if num_LinearTime_runs > 0:
         LinearTimeTime /= num_LinearTime_runs
     file.close()
@@ -183,7 +189,7 @@ def getOurTimeForSizeFromFiles(linearTimeOutputFile, partitioningOutputDir, ourO
     result["sequential"] = sequential_time
     return result
 
-def getOurTimeAndSize(graphname, linearTimeDir, partitioningOutputDir, ourOutputDir):
+def getOurTimeAndSizeUltrafast(graphname, linearTimeDir, partitioningOutputDir, ourOutputDir):
     linearTimeOutputFile = ""
     for fileName in os.listdir(linearTimeDir):
         if graphname in fileName:
@@ -199,6 +205,25 @@ def getOurTimeAndSize(graphname, linearTimeDir, partitioningOutputDir, ourOutput
         if graphname in dirname:
             partitioningOutputDirForGraph = os.path.join(partitioningOutputDir, dirname, "weight_one_ultrafast")
 
+    return getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDirForGraph, ourOutputFile)
+
+def getOurTimeAndSize(graphname, linearTimeDir, partitioningOutputDir, ourOutputDir, partitioning_dir_name):
+    linearTimeOutputFile = ""
+    for fileName in os.listdir(linearTimeDir):
+        if graphname in fileName:
+            linearTimeOutputFile = os.path.join(linearTimeDir, fileName)
+
+    ourOutputFile = ""
+    for fileName in os.listdir(ourOutputDir):
+        if graphname in fileName:
+            ourOutputFile = os.path.join(ourOutputDir, fileName)
+
+    partitioningOutputDirForGraph = ""
+    for dirname in os.listdir(partitioningOutputDir):
+        if graphname in dirname:
+            partitioningOutputDirForGraph = os.path.join(partitioningOutputDir, dirname, partitioning_dir_name)
+
+    print(linearTimeOutputFile, partitioningOutputDirForGraph, ourOutputFile)
     return getOurTimeAndSizeFromFiles(linearTimeOutputFile, partitioningOutputDirForGraph, ourOutputFile)
 
 def getOurTimeForSize(graphname, linearTimeDir, partitioningOutputDir, ourOutputDir, targetSize):

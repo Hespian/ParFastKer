@@ -71,45 +71,49 @@ int main(int argn, char **argv) {
     } endfor
     std::cout << "Finished creating graph" << std::endl;
 
-    auto outerDir=opendir(partitions_directory.c_str());
-    std::vector<std::string> weight_dirs;
-    struct dirent *dp1;
-    while((dp1 = readdir(outerDir)) != NULL) { 
-      if(starts_with(dp1->d_name, "weight")) {
-	weight_dirs.push_back(dp1->d_name);
-      }
-    }
-    (void)closedir(outerDir);
+    // auto outerDir=opendir(partitions_directory.c_str());
+    // std::vector<std::string> weight_dirs;
+    // struct dirent *dp1;
+    // while((dp1 = readdir(outerDir)) != NULL) { 
+    //   if(starts_with(dp1->d_name, "weight")) {
+	// weight_dirs.push_back(dp1->d_name);
+    //   }
+    // }
+    // (void)closedir(outerDir);
 
     std::string partitions_dir_original = std::string(partitions_directory);
     
-    for(std::string weight_dir : weight_dirs) {
-      if(!ends_with(weight_dir, "one_ultrafast")) continue;
-      //if(!ends_with(weight_dir, "LPA")) continue;
-      std::cout << "========================================================================" << std::endl;
-      std::cout << weight_dir << std::endl;
-      partitions_directory = partitions_dir_original + "/" + weight_dir;
+    // for(std::string weight_dir : weight_dirs) {
+    //   if(!ends_with(weight_dir, "one_ultrafast")) continue;
+    //   //if(!ends_with(weight_dir, "LPA")) continue;
+    //   std::cout << "========================================================================" << std::endl;
+    //   std::cout << weight_dir << std::endl;
+    //   partitions_directory = partitions_dir_original + "/" + weight_dir;
 
 
-    auto dir = opendir(partitions_directory.c_str());
+    // auto dir = opendir(partitions_directory.c_str());
     std::vector<std::string> partition_files;
-    struct dirent *dp;
-    while ((dp = readdir(dir)) != NULL)
-       if(ends_with(dp->d_name, ".partition")) {
-        partition_files.push_back(dp->d_name);
-       }
-    (void)closedir(dir);
+    // struct dirent *dp;
+    // while ((dp = readdir(dir)) != NULL)
+    //    if(ends_with(dp->d_name, ".partition")) {
+    //     partition_files.push_back(dp->d_name);
+    //    }
+    // (void)closedir(dir);
 
-    int max_blocks = 0;
-    for(std::string partition_file:partition_files) {
-      int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
-      if(numPartitions > max_blocks) {
-	max_blocks = numPartitions;
-      }
-    }
+    // int max_blocks = 0;
+    // for(std::string partition_file:partition_files) {
+    //   int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
+    //   if(numPartitions > max_blocks) {
+	// max_blocks = numPartitions;
+    //   }
+    // }
+
+    partition_files.push_back(partitions_dir_original);
 
     for(std::string partition_file: partition_files) {
-        int numPartitions = std::stoi(partition_file.substr(0, partition_file.find ('.')));
+        // int numPartitions = std::stoi(partition_file.substr(12, partition_file.length()));
+        std::cout << partition_file.substr(partition_file.rfind ('/') + 1, partition_file.rfind ('.') - partition_file.rfind ('/')) << std::endl;
+        int numPartitions = std::stoi(partition_file.substr(partition_file.rfind ('/') + 1, partition_file.rfind ('.') - partition_file.rfind ('/')));
         int max_threads = 32;
         omp_set_num_threads(std::min(numPartitions, max_threads));
         if(numPartitions == 1) {
@@ -129,8 +133,8 @@ int main(int argn, char **argv) {
         std::cout << "Number of blocks: " << numPartitions << std::endl;
         std::string partition_file_path = "";
         partition_file_path += partitions_directory;
-        partition_file_path += "/";
-        partition_file_path += partition_file;
+        // partition_file_path += "/";
+        // partition_file_path += partition_file;
         graph_io::readPartition(G, partition_file_path);
         std::vector<int> partitions(G.number_of_nodes());
         forall_nodes(G, node) {
@@ -170,7 +174,7 @@ int main(int argn, char **argv) {
                   // }
               }
     }
-    }
+    // }
 
 
     return 0;

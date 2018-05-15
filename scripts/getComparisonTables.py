@@ -32,7 +32,7 @@ def getOurTimeForSize(graph, targetSize):
     return get_data_ours.getOurTimeForSize(graph, linearTimeDir, partitioningDir, ourTimeDir, targetSize)
 
 def getOurTimeAndSize(graph):
-    return get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, ourTimeDir)
+    return get_data_ours.getOurTimeAndSizeUltrafast(graph, linearTimeDir, partitioningDir, ourTimeDir)
 
 def getAkibaTimeAndSize(graph):
     return get_data_akiba.getAkibaTimeAndSize(graph, akibaDir)
@@ -46,7 +46,7 @@ def getNearLinearTimeAndSize(graph):
 def getLinearTimeTimeAndSize(graph):
     return get_data_LinearTime.getLinearTimeTimeAndSize(graph, linearTimeDir)
 
-def RemoveNegatives(line, decimalPlaces=3):
+def RemoveNegatives(line, decimalPlaces=1):
     result = []
     for item in line:
         stringitem = ""
@@ -281,16 +281,18 @@ def reductionStoppingcomparison():
 
     for graph in graphs:
         resultsWith = getOurTimeAndSize(graph)
-        resultsWithout = get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, noReductionStoppingDir)
+        resultsWithout = get_data_ours.getOurTimeAndSizeUltrafast(graph, linearTimeDir, partitioningDir, noReductionStoppingDir)
         timeWith = resultsWith["lineartime_time"] + resultsWith["partitioning_time"] + resultsWith["parallel_quasikernel_time"]
         timeWithout = resultsWithout["lineartime_time"] + resultsWithout["partitioning_time"] + resultsWithout["parallel_quasikernel_time"]
         speedup = timeWithout / timeWith
         sizeWith = resultsWith["parallel_quasikernel_size"]
         sizeWithout = resultsWithout["parallel_quasikernel_size"]
         sizeDifference = sizeWithout - sizeWith
+        sizeDifference /= float(sizeWithout)
+        sizeDifference *= 100
         if round(speedup, 1) == 1.0:
             continue
-        sizeDiffString = "\\numprint{" + str(int(sizeDifference)) + "}"
+        sizeDiffString = "\\numprint{%.1f}" % sizeDifference
         line = [graph, sizeDiffString, speedup]
         data.append(RemoveNegatives(line,1))
         # data.append(line)

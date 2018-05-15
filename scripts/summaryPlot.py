@@ -7,21 +7,21 @@ import matplotlib.pyplot as plt
 
 # graphs = ["uk-2002", "arabic-2005", "gsh-2015-tpd", "uk-2005", "it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "asia.osm", "road_usa", "europe.osm", "rgg_n26_s0",  "RHG-100000000-nodes-2000000000-edges", "delaunay_n24", "del26"]
 graphs = ["uk-2002", "arabic-2005", "gsh-2015-tpd", "uk-2005", "it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "asia.osm", "road_usa", "europe.osm", "rgg_n26_s0", "delaunay_n24", "del26"]
-linearTimeDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
-nearLinearDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/NearLinear"
-partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/partitions"
-ourTimeDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernels"
-akibaDir = "/home/dhespe/Documents/parallel_reductions/akiba_vertex_cover/results"
+linearTimeDir = "../../../triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
+partitioningDir = "../../LinearTimeKernels/partitions"
+ourTimeDir = "../../results/LinearTimeKernelsScalingAll"
+nearLinearDir = "../../../triangle_counting_paper/MIS_sigmod_pub/results/NearLinear"
+akibaDir = "../../akiba_vertex_cover/results"
 
 def getOurTimeAndSizeSequential(graph):
-    res = get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, ourTimeDir)
+    res = get_data_ours.getOurTimeAndSizeUltrafast(graph, linearTimeDir, partitioningDir, ourTimeDir)
     result = dict()
     result["time"] = res["sequential_quasikernel_time"] + res["lineartime_time"]
     result["size"] = res["sequential_quasikernel_size"]
     return result
 
 def getOurTimeAndSizeParallel(graph):
-    res = get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, ourTimeDir)
+    res = get_data_ours.getOurTimeAndSizeUltrafast(graph, linearTimeDir, partitioningDir, ourTimeDir)
     result = dict()
     result["time"] = res["parallel_quasikernel_time"] + res["lineartime_time"] + res["partitioning_time"]
     result["size"] = res["parallel_quasikernel_size"]
@@ -66,12 +66,14 @@ for graph in graphs:
     mintime = getAkibaTimeAndSize(graph)["time"]
 
     oss = getOurTimeAndSizeSequential(graph)["size"] / minsize
+    # print(graph + "(sequential): " + str(getOurTimeAndSizeSequential(graph)["size"]))
     ots = getOurTimeAndSizeSequential(graph)["time"] / mintime
     if oss > 0 and ots > 0:
         oursizeSequential.append(oss)
         ourtimeSequential.append(ots)
 
     osp = getOurTimeAndSizeParallel(graph)["size"] / minsize
+    # print(graph + "(parallel): " + str(getOurTimeAndSizeParallel(graph)["size"]))
     otp = getOurTimeAndSizeParallel(graph)["time"] / mintime
     if osp > 0 and otp > 0:
         oursizeParallel.append(osp)
