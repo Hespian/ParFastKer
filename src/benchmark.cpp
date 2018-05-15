@@ -143,8 +143,9 @@ int main(int argn, char **argv) {
                   std::unique_ptr<full_reductions> full_reducer_parallel = std::unique_ptr<full_reductions>(new full_reductions(adj_for_parallel_aglorithm, partitions));
 
                   bool writeKernel = false; //(i == mis_config.num_reps - 1 && numPartitions == 32);
-                  std::string kernel_path = "kernels/" + mis_config.graph_filename + ".quasikernel";
-                  full_reducer_parallel->reduce_graph(writeKernel, kernel_path);
+                  // std::string kernel_path = "kernels/" + mis_config.graph_filename + ".quasikernel";
+                  std::string kernel_path = mis_config.output_filename;
+                  full_reducer_parallel->reduce_graph(mis_config.write_graph, kernel_path);
 
                   // if(i == mis_config.num_reps - 1 && numPartitions == 32) {
                   //     int numKernelEdges = 0;

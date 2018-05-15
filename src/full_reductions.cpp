@@ -32,10 +32,10 @@ void full_reductions::reduce_graph(bool writeKernel, std::string filepath) {
     if(writeKernel) {
         writeParallelKernel(filepath);
     }
-    if(numPartitions == 1 || numPartitions == 32)
-        parallel_reducers.back()->reduce_graph_sequential();
-	std::cout << "After call to sequential reduce_graph" << std::endl;
-	std::cout << "Kernel size after sequential run: " << parallel_reducers.back()->size() << std::endl;
+    // if(numPartitions == 1 || numPartitions == 32)
+    //     parallel_reducers.back()->reduce_graph_sequential();
+	// std::cout << "After call to sequential reduce_graph" << std::endl;
+	// std::cout << "Kernel size after sequential run: " << parallel_reducers.back()->size() << std::endl;
 }
 
 void full_reductions::writeParallelKernel(std::string kernel_path) {
