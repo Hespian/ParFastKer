@@ -6,19 +6,19 @@ import matplotlib.colors as colors
 import numpy as np
 from matplotlib.ticker import *
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib2tikz import save as tikz_save
-from IPython import embed
+# from matplotlib2tikz import save as tikz_save
+# from IPython import embed
 import get_data_ours
 import renameGraphs
 
 
 
 
-graphs = ["it-2004", "sk-2005", "uk-2007-05", "webbase-2001", "rgg_n26_s0", "del26"]
+graphs = ["it-2004", "uk-2007-05", "webbase-2001",  "del26", "sk-2005", "rgg_n26_s0"]
 
-linearTimeDir = "/home/dhespe/Documents/triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
-partitioningDir = "/home/dhespe/Documents/parallel_reductions/LinearTimeKernels/partitions"
-ourTimeDir = "/home/dhespe/Documents/parallel_reductions/results/LinearTimeKernelsScalingAll"
+linearTimeDir = "../../../triangle_counting_paper/MIS_sigmod_pub/results/LinearTimeKernels/logs"
+partitioningDir = "../../LinearTimeKernels/partitions"
+ourTimeDir = "../../results/LinearTimeKernelsScalingAll"
 
 def makePlot(sizes, data, facecolors, edgecolors, markers, name, ax):
     # if not big:
@@ -49,7 +49,8 @@ partitioning = dict()
 LP = dict()
 Rest = dict()
 for graph in graphs:
-    res = get_data_ours.getOurTimeAndSize(graph, linearTimeDir, partitioningDir, ourTimeDir)
+    print(graph)
+    res = get_data_ours.getOurTimeAndSizeUltrafast(graph, linearTimeDir, partitioningDir, ourTimeDir)
     sizes = sorted(res["scaling_quasikernel_time"].keys())
     overall[graph] = [res["scaling_total"][2] / res["scaling_total"][i] for i in sizes]
     quasikernel[graph] = [res["scaling_quasikernel_time"][2] / res["scaling_quasikernel_time"][i] for i in sizes]
@@ -57,19 +58,19 @@ for graph in graphs:
     LP[graph] = [res["scaling_LP_time"][2] / res["scaling_LP_time"][i] for i in sizes]
     Rest[graph] = [res["scaling_Rest_time"][2] / res["scaling_Rest_time"][i] for i in sizes]
 
-# print("Overall")
+# print("Overall (32)")
 # for graph in graphs:
-#     print(overall[graph][-1])
+#     print(overall[graph][-1] / overall[graph][0])
+
+print("----------------------------------")
+print("rest (32)")
+for graph in graphs:
+    print(Rest[graph][-1] / Rest[graph][0])
 
 # print("----------------------------------")
-# print("rest")
+# print("LP (1)")
 # for graph in graphs:
-#     print(Rest[graph][-1])
-
-# print("----------------------------------")
-# print("LP")
-# for graph in graphs:
-#     print(LP[graph][-1])
+#     print(LP[graph][0])
 
 
 plt.rc('font', size=14)
