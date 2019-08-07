@@ -48,7 +48,7 @@ int parse_parameters(int argn, char **argv,
     struct arg_str *filename            = arg_strn(NULL, NULL, "FILE", 1, 1, "Path to graph file.");
     struct arg_str *partitions          = arg_str0(NULL, "partition_path", NULL, "Path to the partitions used for parallelization (whole directory for benchmark)");
     struct arg_int *num_reps            = arg_int0(NULL, "num_reps", NULL, "Number of repititions to do for benchmarking");
-    struct arg_str *output              = arg_str0(NULL, "output", NULL, "Path to store resulting independent set.");
+    struct arg_str *output              = arg_str0(NULL, "output", NULL, "Path to store resulting quasi kernel.");
     struct arg_lit *console_log         = arg_lit0(NULL, "console_log", "Stream the log into the console");
     struct arg_lit *disable_checks      = arg_lit0(NULL, "disable_checks", "Disable sortedness check during I/O.");
 
