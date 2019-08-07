@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <functional>
+#include <numeric>
 
 #define ISOLATED_CLIQUE_MAX_NEIGHBORS 2
 #define MAX_SIZE_UNCONFINED 6
