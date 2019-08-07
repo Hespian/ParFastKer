@@ -1,6 +1,8 @@
 # ParFastKer
 
-This is the Code written for the paper "Scalable Kernelization for Maximum Independent Sets]{Scalable Kernelization for Maximum Independent Sets".
+This is the Code written for the paper "Scalable Kernelization for Maximum Independent Sets" if you would like to use it for your publication, please cite the following paper:
+
+Hespe, Demian, Christian Schulz, and Darren Strash. "Scalable kernelization for maximum independent sets." 2018 Proceedings of the Twentieth Workshop on Algorithm Engineering and Experiments (ALENEX). Society for Industrial and Applied Mathematics, 2018.
 
 It was not written for production use but if you want to use it to reduce a graph quickly or run benchmarks for your own, the following instructions should help with that.
 
