@@ -4,6 +4,10 @@ This is the Code written for the paper "Scalable Kernelization for Maximum Indep
 
 Hespe, Demian, Christian Schulz, and Darren Strash. "Scalable kernelization for maximum independent sets." 2018 Proceedings of the Twentieth Workshop on Algorithm Engineering and Experiments (ALENEX). Society for Industrial and Applied Mathematics, 2018.
 
+In the above paper, we first kernelize the graph using the LinearTime algorithm from https://github.com/LijunChang/Near-Maximum-Independent-Set
+ 
+For partitioning, we used ParHIP (https://github.com/schulzchristian/KaHIP)
+
 ## Installation
 
 
