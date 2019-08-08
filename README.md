@@ -27,3 +27,7 @@ make
 [input file] should be an unweighted graph in the METIS graph format
 
 [partition file] should be a file containing one line for each vertex in the graph specifying it's partition index, with the first index being 0. The file name should have the form [number of blocks].partition
+
+## License
+
+All files are under the MIT license, except for parts of src/MaximumMatching.cpp which were released under the BSD 3-clause license
