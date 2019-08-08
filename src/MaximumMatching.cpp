@@ -1,3 +1,8 @@
+/*
+ * This is a modified version of code written by Ariful Azad (azad@lbl.gov) and Aydin Buluc (abuluc@lbl.gov), released under the BSD 3-clause license
+ * */
+
+
 #include <parallel/numeric>
 #include "MaximumMatching.h"
 #include <sys/resource.h>
