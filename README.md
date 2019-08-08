@@ -24,4 +24,4 @@ make
 
 [input file] should be an unweighted graph in the METIS graph format
 
-[partition file] should be a file containing one line for each vertex in the graph specifying it's partition index, with the first index being 0 the file name should have the form [number of blocks].partition
+[partition file] should be a file containing one line for each vertex in the graph specifying it's partition index, with the first index being 0. The file name should have the form [number of blocks].partition
