@@ -24,7 +24,6 @@
 
 #include "definitions.h"
 #include "mis_config.h"
-#include "interface/kaHIP_interface.h"
 
 class configuration_mis {
     public:
