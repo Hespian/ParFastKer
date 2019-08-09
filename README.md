@@ -30,4 +30,4 @@ make
 
 ## License
 
-All files are under the MIT license, except for parts of src/MaximumMatching.cpp which were released under the BSD 3-clause license
+All files are under the MIT license, except for  src/MaximumMatching.cpp which was released under the BSD 3-clause license by the original authors
