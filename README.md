@@ -2,7 +2,7 @@
 
 This is the Code written for the paper "Scalable Kernelization for Maximum Independent Sets" if you would like to use it for your publication, please cite the following paper:
 
-Hespe, Demian, Christian Schulz, and Darren Strash. "Scalable kernelization for maximum independent sets." 2018 Proceedings of the Twentieth Workshop on Algorithm Engineering and Experiments (ALENEX). Society for Industrial and Applied Mathematics, 2018.
+Hespe, Demian, Christian Schulz, and Darren Strash. "Scalable kernelization for maximum independent sets." Journal of Experimental Algorithmics (JEA) 24.1 (2019): 1-16.
 
 In the above paper, we first kernelize the graph using the LinearTime algorithm from https://github.com/LijunChang/Near-Maximum-Independent-Set
  
